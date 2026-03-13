@@ -9,6 +9,8 @@ _env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(_env_path)
 
 MONGO_URL = os.getenv("MongoDB_URL")
+if MONGO_URL:
+    MONGO_URL = MONGO_URL.strip().strip('"').strip("'")
 
 # Debugging on Render logs
 if not MONGO_URL:

@@ -10,8 +10,23 @@ load_dotenv(_env_path)
 
 MONGO_URL = os.getenv("MongoDB_URL")
 
+# Debugging on Render logs
+if not MONGO_URL:
+    print("WARNING: MongoDB_URL not found in environment variables!")
+else:
+    # Print a masked version of the URL to verify it's loaded
+    masked_url = MONGO_URL.split("@")[-1] if "@" in MONGO_URL else "URL-Found-But-Malformed"
+    print(f"DEBUG: Attempting to connect to MongoDB at: ...@{masked_url}")
+
 # Explicitly use certifi version of root certificates for SSL/TLS
-client = MongoClient(MONGO_URL, tlsCAFile=certifi.where())
+# Added connectTimeoutMS and appName for better diagnostics
+client = MongoClient(
+    MONGO_URL, 
+    tlsCAFile=certifi.where(),
+    connectTimeoutMS=20000,
+    serverSelectionTimeoutMS=20000,
+    appName="SlideVoxa_Render"
+)
 db = client["slidevoxa_db"]
 fs = gridfs.GridFS(db)
 

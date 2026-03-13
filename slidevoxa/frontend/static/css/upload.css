@@ -1,0 +1,253 @@
+/* ===== UPLOAD PAGE CSS — Light Theme ===== */
+
+.upload-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 700px;
+}
+
+.upload-card {
+    padding: 32px;
+}
+
+.step-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: var(--text-primary);
+}
+
+.step-num {
+    background: #111111;
+    color: #FFFFFF;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.optional-tag {
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    color: #6B7280;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    letter-spacing: 0.05em;
+}
+
+/* Dropzone */
+.dropzone {
+    border: 2px dashed rgba(0, 0, 0, 0.18);
+    border-radius: var(--radius-lg);
+    padding: 48px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s, background 0.3s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.dropzone:hover,
+.dropzone.dragging {
+    border-color: #111111;
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.dropzone-icon {
+    width: 72px;
+    height: 72px;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+}
+
+.dropzone-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dropzone-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+/* File Selected */
+.file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-md);
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.file-icon-wrap {
+    width: 40px;
+    height: 40px;
+    background: rgba(0, 0, 0, 0.07);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.file-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.file-size {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* Voice Upload */
+.upload-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    line-height: 1.6;
+}
+
+.voice-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.voice-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.voice-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-md);
+}
+
+/* Generate Button */
+.generate-section {
+    text-align: center;
+    padding: 8px 0;
+}
+
+.btn-generate {
+    font-size: 17px;
+    padding: 16px 48px;
+    border-radius: var(--radius-full);
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-generate:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.generate-hint {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 12px;
+}
+
+/* Progress Panel */
+.progress-panel {
+    padding: 28px 32px;
+}
+
+.progress-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.progress-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.progress-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.progress-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.prog-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: color 0.3s;
+}
+
+.prog-step.done {
+    color: #16A34A;
+}
+
+.prog-step.active {
+    color: #111111;
+    font-weight: 600;
+}
+
+.prog-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+    transition: background 0.3s;
+}
+
+.prog-step.done .prog-dot {
+    background: #16A34A;
+}
+
+.prog-step.active .prog-dot {
+    background: #111111;
+    animation: pulse 1s infinite;
+}

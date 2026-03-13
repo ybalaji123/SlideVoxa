@@ -1,0 +1,6 @@
+venv/
+__pycache__/
+slidevoxa/backend/uploads/
+slidevoxa/temp_ppt/
+*.pyc
+.env

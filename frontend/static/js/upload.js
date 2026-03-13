@@ -1,6 +1,6 @@
 // Upload page JS — handles PPT upload, voice sample, and generation flow
 
-const API_BASE = window.location.origin;
+const API_BASE = "https://slidevoxa-4.onrender.com";
 
 // Auth guard
 const uid = localStorage.getItem('sv_uid');

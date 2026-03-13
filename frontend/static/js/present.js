@@ -1,5 +1,5 @@
 // Present page JS — synchronized slide + audio presentation player
-const API_BASE = window.location.origin;
+const API_BASE = "https://slidevoxa-4.onrender.com";
 
 // Auth guard
 const uid = localStorage.getItem('sv_uid');

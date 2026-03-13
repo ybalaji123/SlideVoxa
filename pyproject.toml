@@ -1,0 +1,8 @@
+[tool.fastapi]
+entrypoint = "backend.main:app"
+
+[project]
+name = "slidevoxa"
+version = "1.0.0"
+description = "AI-powered presentation narration engine"
+requires-python = ">=3.10"

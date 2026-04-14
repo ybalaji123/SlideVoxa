@@ -23,7 +23,7 @@ The platform uses technologies such as FastAPI for backend services, MongoDB for
 * **AI:** Sarvam AI (LLM), ElevenLabs (TTS)
 
 # System Workflow
-
+![Netflix Logo](https://github.com/ybalaji123/Netflix_Sql_project/blob/main/Netflix_Logo1.png)
 # Architecture Overview
 1. PPTX processing using Python
 2. AI model for script generation

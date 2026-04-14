@@ -30,7 +30,7 @@ The platform uses technologies such as FastAPI for backend services, MongoDB for
 3. TTS for voice output
 4. Web player for presentation
 
-![System workflow](https://github.com/ybalaji123/SlideVoxa/blob/main/SlideVoxa%20workflow%20infographic.png)
+![System architecture](https://github.com/ybalaji123/SlideVoxa/blob/main/ChatGPT%20Image%20Apr%2014%2C%202026%2C%2010_19_56%20PM.png)
 
 # Website Link
 Try it now and enjoy the presentation without fear

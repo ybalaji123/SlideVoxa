@@ -29,3 +29,7 @@ The platform uses technologies such as FastAPI for backend services, MongoDB for
 2. AI model for script generation
 3. TTS for voice output
 4. Web player for presentation
+
+# Website Link
+Try it now and enjoy the presentation without fear
+https://slidevoxa-4.onrender.com/

@@ -201,6 +201,66 @@
         </div>
     </div>
 
+    <!-- FLOATING ASK QUESTION BUTTON -->
+    <button class="ask-float-btn" id="ask-float-btn" title="Ask a question (Q)" style="display:none;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        Ask Question
+    </button>
+
+    <!-- Q&A PANEL (slides up from bottom) -->
+    <div class="qa-panel" id="qa-panel" style="display:none;">
+        <div class="qa-panel-inner glass-card">
+            <div class="qa-panel-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:20px;">🎙️</span>
+                    <div>
+                        <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text-primary);">Ask a Question</h3>
+                        <p style="margin:0;font-size:12px;color:var(--text-muted);">Presentation is paused — AI will answer in the selected language</p>
+                    </div>
+                </div>
+                <button class="btn btn-ghost btn-sm" id="qa-close-btn">✕ Cancel</button>
+            </div>
+            <div class="qa-input-row">
+                <input
+                    type="text"
+                    id="qa-question-input"
+                    class="field-input"
+                    placeholder="Type your question here..."
+                    style="flex:1;padding:12px 16px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text-primary);font-family:var(--font);font-size:14px;outline:none;"
+                    autocomplete="off"
+                />
+                <button class="btn btn-primary" id="qa-submit-btn" style="min-width:100px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                    Send
+                </button>
+            </div>
+            <!-- AI Answer bubble (hidden until answered) -->
+            <div class="qa-answer-bubble" id="qa-answer-bubble" style="display:none;">
+                <div class="qa-answer-header">
+                    <span style="font-size:16px;">🤖</span>
+                    <span style="font-size:13px;font-weight:600;color:var(--cyan);">AI Presenter Answer</span>
+                    <div class="narration-waves qa-answer-waves" id="qa-answer-waves" style="display:none;">
+                        <span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+                <p id="qa-answer-text" style="margin:10px 0 0;font-size:14px;line-height:1.65;color:var(--text-primary);"></p>
+                <div style="margin-top:16px;text-align:right;">
+                    <button class="btn btn-primary btn-sm" id="qa-resume-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polygon points="5 3 19 12 5 21 5 3"/>
+                        </svg>
+                        Resume Presentation
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/js/present.js"></script>
 </body>
 

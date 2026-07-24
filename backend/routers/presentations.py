@@ -36,7 +36,8 @@ from backend.services import (
     extract_slides,
     async_generate_script_sarvam,
     async_generate_audio_for_slide,
-    async_generate_audience_questions
+    async_generate_audience_questions,
+    async_answer_question
 )
 
 router = APIRouter(prefix="/api/presentations", tags=["presentations"])
@@ -52,6 +53,7 @@ async def upload_presentation(
     user_id: Annotated[str, Form(description="Firebase user ID")],
     user_email: Annotated[str, Form(description="User email")],
     voice_id: Annotated[str, Form(description="AI voice ID")] = "21m00Tcm4TlvDq8ikWAM",
+    language: Annotated[str, Form(description="Presentation language code (e.g. en-IN, te-IN, ta-IN)")] = "en-IN",
 ) -> dict:
     """Upload a PPTX file and extract its slide content."""
     try:
@@ -109,6 +111,7 @@ async def upload_presentation(
             "user_id": user_id,
             "user_email": user_email,
             "voice_id": voice_id,
+            "language": language,
             "title": safe_filename.rsplit(".", 1)[0],
             "filename": safe_filename,
             "pptx_file_id": pptx_file_id,
@@ -168,14 +171,14 @@ def generate_presentation(
     return {"status": "generating", "message": "Presentation generation started asynchronously."}
 
 
-async def _process_single_slide_async(slide: dict, presentation_id: str, voice_id: str, session: aiohttp.ClientSession):
+async def _process_single_slide_async(slide: dict, presentation_id: str, voice_id: str, session: aiohttp.ClientSession, language: str = "en-IN"):
     """Worker function to process a single slide's script and audio concurrently."""
     slide_num = slide.get("slide_number", "?")
-    print(f"[generate] Processing slide {slide_num}")
+    print(f"[generate] Processing slide {slide_num} (language={language})")
 
     # 1. Generate speaking script
     try:
-        script = await async_generate_script_sarvam(slide, session)
+        script = await async_generate_script_sarvam(slide, session, language=language)
     except Exception as e:
         print(f"[generate] Script error for slide {slide_num}: {safe_str(e)}")
         title = slide.get("title", f"Slide {slide_num}")
@@ -188,7 +191,7 @@ async def _process_single_slide_async(slide: dict, presentation_id: str, voice_i
 
     # 2. Generate audio
     try:
-        audio_data_uri = await async_generate_audio_for_slide(script, slide_num, presentation_id, voice_id, session)
+        audio_data_uri = await async_generate_audio_for_slide(script, slide_num, presentation_id, voice_id, session, language=language)
     except Exception as e:
         print(f"[generate] Audio error for slide {slide_num}: {safe_str(e)}")
         audio_data_uri = None
@@ -260,15 +263,16 @@ async def _process_presentation_async(presentation_id: str, doc: dict) -> None:
 
     slides_data = doc.get("slides", [])
     voice_id = doc.get("voice_id", "21m00Tcm4TlvDq8ikWAM")
+    language = doc.get("language", "en-IN")
     
     async with aiohttp.ClientSession() as session:
         # Concurrently process all slides
-        tasks = [_process_single_slide_async(s, presentation_id, voice_id, session) for s in slides_data]
+        tasks = [_process_single_slide_async(s, presentation_id, voice_id, session, language=language) for s in slides_data]
         updated_slides = await asyncio.gather(*tasks)
 
         # 3. Generate audience questions
         try:
-            questions = await async_generate_audience_questions(updated_slides, session)
+            questions = await async_generate_audience_questions(updated_slides, session, language=language)
         except Exception as e:
             print(f"[generate] Q&A error: {safe_str(e)}")
             questions = [
@@ -307,6 +311,7 @@ def get_presentation_status(presentation_id: str) -> dict:
         "slide_count": doc.get("slide_count", 0),
         "slides": doc.get("slides", []),
         "questions": doc.get("questions", []),
+        "language": doc.get("language", "en-IN"),
         "created_at": doc.get("created_at", ""),
     }
 
@@ -436,3 +441,41 @@ def open_pptx_locally(presentation_id: str):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ── LIVE Q&A (Listener asks a question during presentation) ──────────────────
+from pydantic import BaseModel
+
+class AskQuestionRequest(BaseModel):
+    question: str
+    language: str = "en-IN"
+
+@router.post("/{presentation_id}/ask")
+async def ask_question_live(presentation_id: str, req: AskQuestionRequest) -> dict:
+    """
+    Listener asks a question mid-presentation.
+    Returns an AI-generated answer (text + TTS audio) in the selected language.
+    """
+    doc = presentations_col.find_one({"_id": presentation_id}, {"slides": 1, "language": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Presentation not found.")
+
+    slides_context = doc.get("slides", [])
+    # Use the stored language if caller doesn't override
+    language = req.language or doc.get("language", "en-IN")
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            answer_text, audio_uri = await async_answer_question(
+                question=req.question,
+                slides_context=slides_context,
+                language=language,
+                session=session,
+            )
+    except Exception as e:
+        print(f"[ask] Error: {safe_str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate answer: {safe_str(e)}")
+
+    return {
+        "answer": answer_text,
+        "audio_data_uri": audio_uri,
+    }

@@ -93,6 +93,49 @@ removeFileBtn.addEventListener('click', () => {
 // ---- VOICE SELECTION ----
 const voiceSelect = document.getElementById('voice-select');
 
+// ---- LANGUAGE SELECTION ----
+const langCards = {
+    'en-IN': document.getElementById('lang-en-card'),
+    'te-IN': document.getElementById('lang-te-card'),
+    'ta-IN': document.getElementById('lang-ta-card'),
+};
+
+function getSelectedLanguage() {
+    const checked = document.querySelector('input[name="lang-select"]:checked');
+    return checked ? checked.value : 'en-IN';
+}
+
+function highlightLangCard(selectedValue) {
+    Object.entries(langCards).forEach(([val, card]) => {
+        if (!card) return;
+        if (val === selectedValue) {
+            card.style.border = '2px solid var(--cyan)';
+            card.style.background = 'rgba(0,198,255,0.08)';
+        } else {
+            card.style.border = '2px solid rgba(255,255,255,0.1)';
+            card.style.background = 'transparent';
+        }
+    });
+}
+
+document.querySelectorAll('input[name="lang-select"]').forEach(radio => {
+    radio.addEventListener('change', (e) => highlightLangCard(e.target.value));
+});
+// Also handle click on the label card itself
+['lang-en', 'lang-te', 'lang-ta'].forEach(id => {
+    const lbl = document.getElementById(id);
+    if (!lbl) return;
+    lbl.addEventListener('click', () => {
+        const radio = lbl.querySelector('input[type=radio]');
+        if (radio) {
+            radio.checked = true;
+            highlightLangCard(radio.value);
+        }
+    });
+});
+// Initialise
+highlightLangCard('en-IN');
+
 // ---- GENERATE BUTTON ----
 const generateBtn = document.getElementById('generate-btn');
 const generateHint = document.getElementById('generate-hint');
@@ -123,6 +166,7 @@ generateBtn.addEventListener('click', async () => {
     formData.append('user_id', uid);
     formData.append('user_email', userEmail);
     formData.append('voice_id', voiceSelect.value || '21m00Tcm4TlvDq8ikWAM');
+    formData.append('language', getSelectedLanguage());
 
     try {
         const uploadRes = await fetch(`${API_BASE}/api/presentations/upload`, {

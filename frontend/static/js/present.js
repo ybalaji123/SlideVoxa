@@ -29,6 +29,8 @@ let isComplete = false;
 let questions = [];
 let scriptVisible = false;
 let hasStarted = false;
+let presentationLanguage = 'en-IN'; // loaded from status endpoint
+let isQAOpen = false;               // true while Q&A panel is visible
 const slideDataCache = {}; // index -> { image_data_uri, audio_data_uri }
 
 // Elements
@@ -110,6 +112,7 @@ async function loadPresentation() {
 
         slides = data.slides || [];
         questions = data.questions || [];
+        presentationLanguage = data.language || 'en-IN';
         phPresentTitle.textContent = data.title || 'Presentation';
 
         if (slides.length === 0) {
@@ -392,6 +395,10 @@ document.getElementById('start-pres-btn').addEventListener('click', () => {
     hasStarted = true;
     document.getElementById('start-overlay').style.display = 'none';
 
+    // Show the floating Ask button
+    const askFloatBtn = document.getElementById('ask-float-btn');
+    if (askFloatBtn) askFloatBtn.style.display = 'flex';
+
     // Trigger local ppt opening
     fetch(`${API_BASE}/api/presentations/${presentationId}/open_ppt`, { method: 'POST' })
         .catch(e => console.error("Failed to open local PPT:", e));
@@ -418,8 +425,140 @@ document.addEventListener('keydown', (e) => {
         case 'p': case 'P':
             pauseBtn.click();
             break;
+        case 'q': case 'Q':
+            // Open Q&A panel shortcut
+            if (hasStarted && !isComplete) openQAPanel();
+            break;
     }
 });
+
+// ═══════════════════════════════════════════════════
+// LIVE Q&A SYSTEM
+// ═══════════════════════════════════════════════════
+
+const askFloatBtn   = document.getElementById('ask-float-btn');
+const qaPanel       = document.getElementById('qa-panel');
+const qaCloseBtn    = document.getElementById('qa-close-btn');
+const qaInput       = document.getElementById('qa-question-input');
+const qaSubmitBtn   = document.getElementById('qa-submit-btn');
+const qaAnswerBubble = document.getElementById('qa-answer-bubble');
+const qaAnswerText  = document.getElementById('qa-answer-text');
+const qaAnswerWaves = document.getElementById('qa-answer-waves');
+const qaResumeBtn   = document.getElementById('qa-resume-btn');
+
+let qaAudio = null; // Audio object for the Q&A answer TTS
+
+function openQAPanel() {
+    if (isQAOpen || !hasStarted) return;
+    isQAOpen = true;
+
+    // Pause the presentation
+    if (currentAudio) {
+        currentAudio.pause();
+        narrationText.textContent = 'Paused for Q&A';
+    } else {
+        // Pause auto-advance timer if active
+        if (window.__autoAdvanceTimeout) clearTimeout(window.__autoAdvanceTimeout);
+    }
+
+    // Reset panel state
+    qaInput.value = '';
+    qaAnswerBubble.style.display = 'none';
+    qaResumeBtn.style.display = 'none';
+    qaSubmitBtn.disabled = false;
+    qaSubmitBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send`;
+
+    qaPanel.style.display = 'flex';
+    setTimeout(() => qaInput.focus(), 120);
+}
+
+function closeQAPanel() {
+    // Stop Q&A audio if playing
+    if (qaAudio) { qaAudio.pause(); qaAudio = null; }
+    if (qaAnswerWaves) qaAnswerWaves.style.display = 'none';
+    qaPanel.style.display = 'none';
+    isQAOpen = false;
+}
+
+async function submitQuestion() {
+    const question = qaInput.value.trim();
+    if (!question) { qaInput.focus(); return; }
+
+    // Show loading state
+    qaSubmitBtn.disabled = true;
+    qaSubmitBtn.innerHTML = `<div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle;"></div> Thinking...`;
+    qaAnswerBubble.style.display = 'none';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/presentations/${presentationId}/ask`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, language: presentationLanguage }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // Display answer text
+        qaAnswerText.textContent = data.answer || 'Sorry, I could not generate an answer.';
+        qaAnswerBubble.style.display = 'block';
+        qaResumeBtn.style.display = 'inline-flex';
+
+        // Play TTS audio if available
+        if (data.audio_data_uri) {
+            if (qaAudio) { qaAudio.pause(); qaAudio = null; }
+            if (qaAnswerWaves) qaAnswerWaves.style.display = 'flex';
+
+            // Convert base64 to Blob for performance
+            let audioSrc = data.audio_data_uri;
+            if (audioSrc.startsWith('data:')) {
+                audioSrc = dataURItoBlobUrl(audioSrc);
+            }
+            qaAudio = new Audio(audioSrc);
+            qaAudio.volume = parseFloat(volumeSlider.value);
+            qaAudio.play().catch(() => {});
+            qaAudio.addEventListener('ended', () => {
+                if (qaAnswerWaves) qaAnswerWaves.style.display = 'none';
+            });
+        }
+
+    } catch (err) {
+        qaAnswerText.textContent = `Failed to get answer: ${err.message}. Please try again.`;
+        qaAnswerBubble.style.display = 'block';
+        qaResumeBtn.style.display = 'inline-flex';
+    } finally {
+        qaSubmitBtn.disabled = false;
+        qaSubmitBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Ask Again`;
+    }
+}
+
+function resumeFromQA() {
+    // Stop Q&A audio
+    if (qaAudio) { qaAudio.pause(); qaAudio = null; }
+    if (qaAnswerWaves) qaAnswerWaves.style.display = 'none';
+    closeQAPanel();
+
+    // Resume the slide audio from where it stopped (restart current slide audio)
+    if (currentAudio && typeof currentAudio.play === 'function' && !isPaused) {
+        currentAudio.play().catch(() => {});
+        narrationText.textContent = 'AI Presenter Speaking...';
+    } else if (!isPaused) {
+        // Re-show current slide to restart audio
+        showSlide(currentSlide);
+    }
+}
+
+// Wire up Q&A panel events
+if (askFloatBtn) askFloatBtn.addEventListener('click', openQAPanel);
+if (qaCloseBtn)  qaCloseBtn.addEventListener('click', () => { closeQAPanel(); });
+if (qaSubmitBtn) qaSubmitBtn.addEventListener('click', submitQuestion);
+if (qaResumeBtn) qaResumeBtn.addEventListener('click', resumeFromQA);
+if (qaInput) {
+    qaInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submitQuestion(); }
+        if (e.key === 'Escape') closeQAPanel();
+    });
+}
 
 // Boot
 loadPresentation();

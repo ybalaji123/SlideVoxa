@@ -153,7 +153,15 @@ def extract_slides(content: bytes, presentation_id: str) -> list[dict]:
     return slides_data
 
 
-async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSession) -> str:
+# Language display names used in prompts
+_LANG_NAMES = {
+    "en-IN": "English",
+    "te-IN": "Telugu",
+    "ta-IN": "Tamil",
+    "hi-IN": "Hindi",
+}
+
+async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSession, language: str = "en-IN") -> str:
     """Generate a natural speaking script for a slide using Sarvam AI asynchronously."""
     title = slide.get("title", "")
     points = slide.get("points", [])
@@ -162,13 +170,24 @@ async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSessi
     bullet_text = "\n".join(f"- {p}" for p in points) if points else ""
     content = f"Title: {title}\n{bullet_text}\n{body}".strip()
 
-    prompt = (
-        "You are a professional AI presenter. Convert the following slide content "
-        "into a natural, engaging 2-3 sentence spoken presentation script. "
-        "Sound like a human presenter — clear, confident, and engaging. "
-        "Do not use markdown. Just plain spoken text.\n\n"
-        f"Slide content:\n{content}\n\nScript:"
-    )
+    lang_name = _LANG_NAMES.get(language, "English")
+    if language == "en-IN":
+        lang_instruction = (
+            "You are a professional AI presenter. Convert the following slide content "
+            "into a natural, engaging 2-3 sentence spoken presentation script. "
+            "Sound like a human presenter — clear, confident, and engaging. "
+            "Do not use markdown. Just plain spoken text."
+        )
+    else:
+        lang_instruction = (
+            f"You are a professional AI presenter. Convert the following slide content "
+            f"into a natural, engaging 2-3 sentence spoken presentation script in {lang_name}. "
+            f"The entire script MUST be written in {lang_name} language only. "
+            f"Sound like a human presenter — clear, confident, and engaging. "
+            f"Do not use markdown. Just plain spoken {lang_name} text."
+        )
+
+    prompt = f"{lang_instruction}\n\nSlide content:\n{content}\n\nScript:"
 
     try:
         async with session.post(
@@ -186,11 +205,11 @@ async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSessi
         ) as response:
             if response.status == 200:
                 data = await response.json()
-                content = data["choices"][0]["message"]["content"].strip()
+                result = data["choices"][0]["message"]["content"].strip()
                 import re
                 # Sarvam AI sometimes uses DeepSeek R1 and outputs <think> debug blocks; strip them out
-                content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
-                return content
+                result = re.sub(r'<think>.*?</think>', '', result, flags=re.DOTALL).strip()
+                return result
             else:
                 text = await response.text()
                 print(f"[Sarvam script] Error {response.status}: {safe_str(text[:200])}")
@@ -206,12 +225,19 @@ async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSessi
     return script
 
 
-async def async_generate_audio_for_slide(script: str, slide_number: int, presentation_id: str, voice_id: str, session: aiohttp.ClientSession) -> str | None:
+async def async_generate_audio_for_slide(script: str, slide_number: int, presentation_id: str, voice_id: str, session: aiohttp.ClientSession, language: str = "en-IN") -> str | None:
     """
-    Generate audio for a slide asynchronously. Tries ElevenLabs first, falls back to Sarvam.
+    Generate audio for a slide asynchronously.
+    - For non-English languages: always use Sarvam TTS (ElevenLabs doesn't support Indian languages).
+    - For English: tries ElevenLabs first, falls back to Sarvam.
     Returns a base64-encoded audio string (data URI) or None.
     """
-    # Try ElevenLabs first if key is available
+    # For non-English, skip ElevenLabs and go directly to Sarvam TTS
+    if language != "en-IN":
+        print(f"[Audio] Non-English language ({language}), using Sarvam TTS for slide_{slide_number}")
+        return await async_generate_audio_sarvam_b64(script, slide_number, session, language=language)
+
+    # Try ElevenLabs first if key is available (English only)
     if ELEVENLABS_API_KEY:
         try:
             url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
@@ -246,14 +272,24 @@ async def async_generate_audio_for_slide(script: str, slide_number: int, present
             print(f"[ElevenLabs] Exception: {safe_str(e)} - falling back")
 
     # Sarvam TTS fallback
-    return await async_generate_audio_sarvam_b64(script, slide_number, session)
+    return await async_generate_audio_sarvam_b64(script, slide_number, session, language=language)
 
 
-async def async_generate_audio_sarvam_b64(script: str, slide_number: int, session: aiohttp.ClientSession) -> str | None:
-    """Sarvam AI TTS implicitly called asynchronously. Returns a base64 data URI string or None."""
+# Speaker mapping per language for Sarvam bulbul:v3
+_SARVAM_SPEAKERS = {
+    "en-IN": "arvind",
+    "te-IN": "arjun",
+    "ta-IN": "amol",
+    "hi-IN": "arvind",
+}
+
+async def async_generate_audio_sarvam_b64(script: str, slide_number: int, session: aiohttp.ClientSession, language: str = "en-IN") -> str | None:
+    """Sarvam AI TTS called asynchronously. Returns a base64 data URI string or None."""
     if not SARVAM_API_KEY:
         print("[Sarvam TTS] No API key -- skipping audio")
         return None
+
+    speaker = _SARVAM_SPEAKERS.get(language, "arvind")
 
     try:
         async with session.post(
@@ -264,9 +300,9 @@ async def async_generate_audio_sarvam_b64(script: str, slide_number: int, sessio
                 "Content-Type": "application/json",
             },
             json={
-                "inputs": [script.strip()[:500]],  # clean input and limit length
-                "target_language_code": "en-IN",
-                "speaker": "priya",             # valid bulbul:v3 speaker
+                "inputs": [script.strip()[:2000]],   # bulbul:v3 supports up to 2500 chars
+                "target_language_code": language,
+                "speaker": speaker,
                 "pace": 1.0,
                 "speech_sample_rate": 22050,
                 "enable_preprocessing": True,
@@ -278,7 +314,7 @@ async def async_generate_audio_sarvam_b64(script: str, slide_number: int, sessio
                 data = await response.json()
                 audio_b64 = data.get("audios", [None])[0]
                 if audio_b64:
-                    print(f"[Sarvam TTS] slide_{slide_number} ok ({len(audio_b64)} b64 chars)")
+                    print(f"[Sarvam TTS] slide_{slide_number} ok ({language}, {len(audio_b64)} b64 chars)")
                     return f"data:audio/wav;base64,{audio_b64}"
             else:
                 text = await response.text()
@@ -289,7 +325,71 @@ async def async_generate_audio_sarvam_b64(script: str, slide_number: int, sessio
     return None
 
 
-async def async_generate_audience_questions(slides_data: list[dict], session: aiohttp.ClientSession) -> list[str]:
+async def async_answer_question(question: str, slides_context: list[dict], language: str, session: aiohttp.ClientSession) -> tuple[str, str | None]:
+    """
+    Generate an AI answer to a listener's question using the presentation context.
+    Returns (answer_text, audio_data_uri_or_None).
+    """
+    lang_name = _LANG_NAMES.get(language, "English")
+
+    # Build concise context from slide titles + points
+    ctx_parts = []
+    for s in slides_context[:15]:  # limit context size
+        title = s.get("title", "")
+        pts = "; ".join(s.get("points", [])[:3])
+        ctx_parts.append(f"Slide {s.get('slide_number', '?')}: {title}" + (f" — {pts}" if pts else ""))
+    context_str = "\n".join(ctx_parts)
+
+    if language == "en-IN":
+        lang_instr = "Answer in English."
+    else:
+        lang_instr = f"You MUST answer entirely in {lang_name} language only."
+
+    prompt = (
+        f"You are an expert AI presenter who just finished a presentation. "
+        f"A listener has asked you a question. {lang_instr}\n\n"
+        f"Presentation context:\n{context_str}\n\n"
+        f"Listener's question: {question}\n\n"
+        f"Give a clear, helpful, 2-4 sentence answer as the presenter. "
+        f"Do not use markdown. Just plain spoken text."
+    )
+
+    answer_text = ""
+    try:
+        async with session.post(
+            "https://api.sarvam.ai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {SARVAM_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "sarvam-m",
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 400,
+            },
+            timeout=40,
+        ) as response:
+            if response.status == 200:
+                data = await response.json()
+                answer_text = data["choices"][0]["message"]["content"].strip()
+                import re
+                answer_text = re.sub(r'<think>.*?</think>', '', answer_text, flags=re.DOTALL).strip()
+            else:
+                text = await response.text()
+                print(f"[Sarvam Q&A] Error {response.status}: {safe_str(text[:200])}")
+    except Exception as e:
+        print(f"[Sarvam Q&A] Exception: {safe_str(e)}")
+
+    if not answer_text:
+        answer_text = "That's a great question. Based on the presentation content, I'd be happy to elaborate — please ask again and I'll do my best to assist."
+
+    # Generate TTS audio for the answer
+    audio_uri = await async_generate_audio_sarvam_b64(answer_text, 0, session, language=language)
+
+    return answer_text, audio_uri
+
+
+async def async_generate_audience_questions(slides_data: list[dict], session: aiohttp.ClientSession, language: str = "en-IN") -> list[str]:
     """Generate possible audience questions using Sarvam AI asynchronously."""
     summary_parts = []
     for slide in slides_data:
@@ -300,10 +400,16 @@ async def async_generate_audience_questions(slides_data: list[dict], session: ai
 
     presentation_summary = "\n".join(summary_parts)
 
+    lang_name = _LANG_NAMES.get(language, "English")
+    if language == "en-IN":
+        lang_instr = "Generate the questions in English."
+    else:
+        lang_instr = f"Generate the questions in {lang_name} language only."
+
     prompt = (
-        "You are an expert audience member. Based on this presentation, generate 5 insightful "
-        "questions that an audience member might ask. Format as a numbered list "
-        "(1. Question, 2. Question, etc.). Be specific and thought-provoking.\n\n"
+        f"You are an expert audience member. Based on this presentation, generate 5 insightful "
+        f"questions that an audience member might ask. {lang_instr} "
+        f"Format as a numbered list (1. Question, 2. Question, etc.). Be specific and thought-provoking.\n\n"
         f"Presentation:\n{presentation_summary}\n\nQuestions:"
     )
 

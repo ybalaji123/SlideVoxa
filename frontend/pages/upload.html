@@ -148,6 +148,41 @@
                 </div>
             </div>
 
+            <!-- STEP 3: Language Selection -->
+            <div class="upload-card glass-card" id="language-step">
+                <div class="step-label">
+                    <span class="step-num">03</span>
+                    Select Presentation Language
+                </div>
+                <p class="upload-desc">Choose the language for AI narration and scripts.</p>
+                <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap;">
+                    <label id="lang-en" style="flex:1;min-width:120px;cursor:pointer;">
+                        <input type="radio" name="lang-select" value="en-IN" checked hidden />
+                        <div class="lang-option lang-active" id="lang-en-card" style="border:2px solid var(--cyan);border-radius:12px;padding:14px 18px;text-align:center;transition:all 0.2s;background:rgba(0,198,255,0.08);">
+                            <div style="font-size:22px;margin-bottom:4px;">🇬🇧</div>
+                            <div style="font-weight:600;font-size:14px;color:var(--text-primary);">English</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">en-IN</div>
+                        </div>
+                    </label>
+                    <label id="lang-te" style="flex:1;min-width:120px;cursor:pointer;">
+                        <input type="radio" name="lang-select" value="te-IN" hidden />
+                        <div class="lang-option" id="lang-te-card" style="border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 18px;text-align:center;transition:all 0.2s;">
+                            <div style="font-size:22px;margin-bottom:4px;">🇮🇳</div>
+                            <div style="font-weight:600;font-size:14px;color:var(--text-primary);">Telugu</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">te-IN</div>
+                        </div>
+                    </label>
+                    <label id="lang-ta" style="flex:1;min-width:120px;cursor:pointer;">
+                        <input type="radio" name="lang-select" value="ta-IN" hidden />
+                        <div class="lang-option" id="lang-ta-card" style="border:2px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 18px;text-align:center;transition:all 0.2s;">
+                            <div style="font-size:22px;margin-bottom:4px;">🇮🇳</div>
+                            <div style="font-weight:600;font-size:14px;color:var(--text-primary);">Tamil</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">ta-IN</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <!-- GENERATE BUTTON -->
             <div class="generate-section">
                 <button class="btn btn-primary btn-generate" id="generate-btn" disabled>
@@ -160,6 +195,7 @@
                 </button>
                 <p class="generate-hint" id="generate-hint">Please upload a PowerPoint file to continue.</p>
             </div>
+
 
             <!-- PROGRESS PANEL (hidden by default) -->
             <div class="progress-panel glass-card" id="progress-panel" style="display:none;">

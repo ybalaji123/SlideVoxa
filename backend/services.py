@@ -53,7 +53,7 @@ def fast_extract_text(content: bytes) -> list[dict]:
                     continue
                 for para in shape.text_frame.paragraphs:
                     if para.text.strip(): points.append(para.text.strip())
-            
+
             slides_data.append({
                 "slide_number": i,
                 "title": title or f"Slide {i}",
@@ -71,7 +71,7 @@ def extract_slides(content: bytes, presentation_id: str) -> list[dict]:
     slide_image_b64 = {}
     temp_dir = tempfile.mkdtemp(prefix="slidevoxa_")
     temp_pptx = os.path.join(temp_dir, "temp_pres.pptx")
-    
+
     with open(temp_pptx, "wb") as f:
         f.write(content)
 
@@ -81,31 +81,31 @@ def extract_slides(content: bytes, presentation_id: str) -> list[dict]:
         import win32com.client
         import pythoncom
         pythoncom.CoInitialize()
-        
+
         # Use a fresh instance of PowerPoint
         powerpoint = win32com.client.DispatchEx("PowerPoint.Application")
         powerpoint.Visible = False # Run invisibly
-        
+
         abs_temp_pptx = os.path.abspath(temp_pptx)
-        
+
         # Open presentation
         # Open(Filename, ReadOnly, Untitled, WithWindow)
         presentation = powerpoint.Presentations.Open(abs_temp_pptx, ReadOnly=1, WithWindow=False)
-        
+
         total_slides = presentation.Slides.Count
         print(f"[extract] PowerPoint slide count: {total_slides}")
-        
+
         # Get dimensions for crisp PNG export (1.5x to 2x scale for beauty)
         slide_width_pts = presentation.PageSetup.SlideWidth
         slide_height_pts = presentation.PageSetup.SlideHeight
         export_width = 1600 # Premium resolution
         export_height = int(export_width * slide_height_pts / slide_width_pts)
-        
+
         for i, slide in enumerate(presentation.Slides, 1):
             img_path = os.path.join(temp_dir, f"s_{i}.png")
             # Export(FileName, FilterName, ScaleWidth, ScaleHeight)
             slide.Export(img_path, "PNG", export_width, export_height)
-            
+
             if os.path.exists(img_path):
                 with open(img_path, "rb") as im_f:
                     im_bytes = im_f.read()
@@ -118,7 +118,7 @@ def extract_slides(content: bytes, presentation_id: str) -> list[dict]:
         # powerpoint.Quit() # Don't quit if others are using it, but we used DispatchEx so we should
         try: powerpoint.Quit()
         except: pass
-        
+
         print(f"[extract] Successfully exported {len(slide_image_b64)} images")
     except Exception as e:
         import traceback
@@ -143,7 +143,7 @@ def extract_slides(content: bytes, presentation_id: str) -> list[dict]:
                         title = text
                     else:
                         points.append(text)
-        
+
         slides_data.append({
             "slide_number": i,
             "title": title or f"Slide {i}",
@@ -161,6 +161,65 @@ _LANG_NAMES = {
     "hi-IN": "Hindi",
 }
 
+VALID_SARVAM_SPEAKERS = {
+    "shubh", "ratan", "dev", "roopa", "kavya", "priya", "simran", "mani",
+    "anushka", "rahul", "pooja", "rohan", "gokul", "vijay", "shruti", "suhani",
+    "mohit", "kavitha", "rehan", "soham", "rupali", "hitesh", "aditya", "ritu",
+    "neha", "amit", "ishita", "shreya", "varun", "manan", "sumit", "kabir",
+    "aayan", "ashutosh", "advait", "anand", "tanya", "tarun", "sunny", "karun",
+    "abhilash", "manisha", "vidya", "arya"
+}
+
+_SARVAM_DEFAULT_SPEAKERS = {
+    "en-IN": "shubh",
+    "te-IN": "shubh",
+    "ta-IN": "mani",
+    "hi-IN": "shubh",
+}
+
+import re
+
+def clean_sarvam_response(msg: dict, language: str = "en-IN") -> str:
+    """Extract clean script/answer from Sarvam AI model response, handling reasoning blocks."""
+    if not msg:
+        return ""
+    content = msg.get("content")
+    reasoning = msg.get("reasoning_content")
+    text = content if content else (reasoning or "")
+
+    # Strip <think>...</think>
+    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+
+    # Match native language character ranges for Indian languages
+    ranges = {
+        "te-IN": r'[\u0C00-\u0C7F]',  # Telugu
+        "ta-IN": r'[\u0B80-\u0BFF]',  # Tamil
+        "hi-IN": r'[\u0900-\u097F]',  # Hindi / Devanagari
+    }
+
+    pattern = ranges.get(language)
+    if pattern:
+        lines = [line.strip() for line in text.split("\n") if re.search(pattern, line)]
+        clean_lines = []
+        for l in lines:
+            # Clean list formatting and quotes
+            l = re.sub(r'^[0-9\.\-\*\s"\'`]+', '', l).strip().strip('"\'`')
+            # Remove trailing English translation comments e.g. (Let's discuss...)
+            l = re.sub(r'\s*\([A-Za-z0-9\s\.,\'-]+\)\s*$', '', l).strip()
+            if l and not l.startswith("Option") and not l.startswith("Sentence"):
+                clean_lines.append(l)
+        if clean_lines:
+            # Return distinct clean lines
+            return " ".join(dict.fromkeys(clean_lines))
+
+    # Fallback for English or unpatterned text: get last non-empty block
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+    if paragraphs:
+        last = paragraphs[-1]
+        return re.sub(r'^[0-9\.\-\*\s"\'`]+', '', last).strip().strip('"\'`')
+    return text.strip()
+
+
 async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSession, language: str = "en-IN") -> str:
     """Generate a natural speaking script for a slide using Sarvam AI asynchronously."""
     title = slide.get("title", "")
@@ -173,18 +232,16 @@ async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSessi
     lang_name = _LANG_NAMES.get(language, "English")
     if language == "en-IN":
         lang_instruction = (
-            "You are a professional AI presenter. Convert the following slide content "
-            "into a natural, engaging 2-3 sentence spoken presentation script. "
-            "Sound like a human presenter — clear, confident, and engaging. "
-            "Do not use markdown. Just plain spoken text."
+            "You are a professional AI presenter. Convert the slide content "
+            "into a natural 2-3 sentence spoken presentation script in English. "
+            "Output ONLY the spoken script in plain text. Do not output reasoning or explanations."
         )
     else:
         lang_instruction = (
-            f"You are a professional AI presenter. Convert the following slide content "
-            f"into a natural, engaging 2-3 sentence spoken presentation script in {lang_name}. "
+            f"You are a professional AI presenter. Convert the slide content "
+            f"into a natural 2-3 sentence spoken presentation script in {lang_name}. "
             f"The entire script MUST be written in {lang_name} language only. "
-            f"Sound like a human presenter — clear, confident, and engaging. "
-            f"Do not use markdown. Just plain spoken {lang_name} text."
+            f"Output ONLY the {lang_name} spoken script in plain text. Do not output reasoning or English text."
         )
 
     prompt = f"{lang_instruction}\n\nSlide content:\n{content}\n\nScript:"
@@ -197,19 +254,21 @@ async def async_generate_script_sarvam(slide: dict, session: aiohttp.ClientSessi
                 "Content-Type": "application/json",
             },
             json={
-                "model": "sarvam-m",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 300,
+                "model": "sarvam-30b",
+                "messages": [
+                    {"role": "system", "content": f"You are a professional presenter. Output ONLY the raw spoken script in {lang_name}. No explanations."},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 500,
             },
             timeout=30,
         ) as response:
             if response.status == 200:
                 data = await response.json()
-                result = data["choices"][0]["message"]["content"].strip()
-                import re
-                # Sarvam AI sometimes uses DeepSeek R1 and outputs <think> debug blocks; strip them out
-                result = re.sub(r'<think>.*?</think>', '', result, flags=re.DOTALL).strip()
-                return result
+                msg = data["choices"][0]["message"]
+                script = clean_sarvam_response(msg, language=language)
+                if script:
+                    return script
             else:
                 text = await response.text()
                 print(f"[Sarvam script] Error {response.status}: {safe_str(text[:200])}")
@@ -229,16 +288,16 @@ async def async_generate_audio_for_slide(script: str, slide_number: int, present
     """
     Generate audio for a slide asynchronously.
     - For non-English languages: always use Sarvam TTS (ElevenLabs doesn't support Indian languages).
-    - For English: tries ElevenLabs first, falls back to Sarvam.
+    - For English: tries ElevenLabs first (if voice_id is an ElevenLabs ID), falls back to Sarvam.
     Returns a base64-encoded audio string (data URI) or None.
     """
     # For non-English, skip ElevenLabs and go directly to Sarvam TTS
     if language != "en-IN":
-        print(f"[Audio] Non-English language ({language}), using Sarvam TTS for slide_{slide_number}")
-        return await async_generate_audio_sarvam_b64(script, slide_number, session, language=language)
+        print(f"[Audio] Non-English language ({language}), using Sarvam TTS for slide_{slide_number} (speaker={voice_id})")
+        return await async_generate_audio_sarvam_b64(script, slide_number, session, language=language, speaker=voice_id)
 
-    # Try ElevenLabs first if key is available (English only)
-    if ELEVENLABS_API_KEY:
+    # Try ElevenLabs first if key is available and voice_id is an ElevenLabs ID
+    if ELEVENLABS_API_KEY and voice_id not in VALID_SARVAM_SPEAKERS:
         try:
             url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
             async with session.post(
@@ -272,24 +331,19 @@ async def async_generate_audio_for_slide(script: str, slide_number: int, present
             print(f"[ElevenLabs] Exception: {safe_str(e)} - falling back")
 
     # Sarvam TTS fallback
-    return await async_generate_audio_sarvam_b64(script, slide_number, session, language=language)
+    return await async_generate_audio_sarvam_b64(script, slide_number, session, language=language, speaker=voice_id)
 
 
-# Speaker mapping per language for Sarvam bulbul:v3
-_SARVAM_SPEAKERS = {
-    "en-IN": "arvind",
-    "te-IN": "arjun",
-    "ta-IN": "amol",
-    "hi-IN": "arvind",
-}
-
-async def async_generate_audio_sarvam_b64(script: str, slide_number: int, session: aiohttp.ClientSession, language: str = "en-IN") -> str | None:
+async def async_generate_audio_sarvam_b64(script: str, slide_number: int, session: aiohttp.ClientSession, language: str = "en-IN", speaker: str = None) -> str | None:
     """Sarvam AI TTS called asynchronously. Returns a base64 data URI string or None."""
     if not SARVAM_API_KEY:
         print("[Sarvam TTS] No API key -- skipping audio")
         return None
 
-    speaker = _SARVAM_SPEAKERS.get(language, "arvind")
+    if not speaker or speaker not in VALID_SARVAM_SPEAKERS:
+        speaker = _SARVAM_DEFAULT_SPEAKERS.get(language, "shubh")
+
+    clean_text = script.strip()[:2000]
 
     try:
         async with session.post(
@@ -300,7 +354,7 @@ async def async_generate_audio_sarvam_b64(script: str, slide_number: int, sessio
                 "Content-Type": "application/json",
             },
             json={
-                "inputs": [script.strip()[:2000]],   # bulbul:v3 supports up to 2500 chars
+                "inputs": [clean_text],
                 "target_language_code": language,
                 "speaker": speaker,
                 "pace": 1.0,
@@ -314,7 +368,7 @@ async def async_generate_audio_sarvam_b64(script: str, slide_number: int, sessio
                 data = await response.json()
                 audio_b64 = data.get("audios", [None])[0]
                 if audio_b64:
-                    print(f"[Sarvam TTS] slide_{slide_number} ok ({language}, {len(audio_b64)} b64 chars)")
+                    print(f"[Sarvam TTS] slide_{slide_number} ok ({language}, speaker={speaker}, {len(audio_b64)} b64 chars)")
                     return f"data:audio/wav;base64,{audio_b64}"
             else:
                 text = await response.text()
@@ -325,7 +379,7 @@ async def async_generate_audio_sarvam_b64(script: str, slide_number: int, sessio
     return None
 
 
-async def async_answer_question(question: str, slides_context: list[dict], language: str, session: aiohttp.ClientSession) -> tuple[str, str | None]:
+async def async_answer_question(question: str, slides_context: list[dict], language: str, session: aiohttp.ClientSession, voice_id: str = None) -> tuple[str, str | None]:
     """
     Generate an AI answer to a listener's question using the presentation context.
     Returns (answer_text, audio_data_uri_or_None).
@@ -351,7 +405,7 @@ async def async_answer_question(question: str, slides_context: list[dict], langu
         f"Presentation context:\n{context_str}\n\n"
         f"Listener's question: {question}\n\n"
         f"Give a clear, helpful, 2-4 sentence answer as the presenter. "
-        f"Do not use markdown. Just plain spoken text."
+        f"Output ONLY the spoken answer text in {lang_name}."
     )
 
     answer_text = ""
@@ -363,17 +417,19 @@ async def async_answer_question(question: str, slides_context: list[dict], langu
                 "Content-Type": "application/json",
             },
             json={
-                "model": "sarvam-m",
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 400,
+                "model": "sarvam-30b",
+                "messages": [
+                    {"role": "system", "content": f"Output ONLY the answer in {lang_name}. No reasoning or explanations."},
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": 500,
             },
             timeout=40,
         ) as response:
             if response.status == 200:
                 data = await response.json()
-                answer_text = data["choices"][0]["message"]["content"].strip()
-                import re
-                answer_text = re.sub(r'<think>.*?</think>', '', answer_text, flags=re.DOTALL).strip()
+                msg = data["choices"][0]["message"]
+                answer_text = clean_sarvam_response(msg, language=language)
             else:
                 text = await response.text()
                 print(f"[Sarvam Q&A] Error {response.status}: {safe_str(text[:200])}")
@@ -384,7 +440,7 @@ async def async_answer_question(question: str, slides_context: list[dict], langu
         answer_text = "That's a great question. Based on the presentation content, I'd be happy to elaborate — please ask again and I'll do my best to assist."
 
     # Generate TTS audio for the answer
-    audio_uri = await async_generate_audio_sarvam_b64(answer_text, 0, session, language=language)
+    audio_uri = await async_generate_audio_sarvam_b64(answer_text, 0, session, language=language, speaker=voice_id)
 
     return answer_text, audio_uri
 
@@ -421,15 +477,16 @@ async def async_generate_audience_questions(slides_data: list[dict], session: ai
                 "Content-Type": "application/json",
             },
             json={
-                "model": "sarvam-m",
+                "model": "sarvam-30b",
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": 400,
+                "max_tokens": 500,
             },
             timeout=30,
         ) as response:
             if response.status == 200:
                 data = await response.json()
-                content = data["choices"][0]["message"]["content"].strip()
+                msg = data["choices"][0]["message"]
+                content = msg.get("content") or msg.get("reasoning_content") or ""
                 import re
                 content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
                 questions = []
@@ -439,7 +496,8 @@ async def async_generate_audience_questions(slides_data: list[dict], session: ai
                         q = line.lstrip("0123456789.-) ").strip()
                         if q:
                             questions.append(q)
-                return questions[:7]
+                if questions:
+                    return questions[:7]
             else:
                 text = await response.text()
                 print(f"[Sarvam Q&A] Error {response.status}: {safe_str(text[:200])}")
@@ -455,4 +513,3 @@ async def async_generate_audience_questions(slides_data: list[dict], session: ai
         "Can you elaborate on the most surprising finding?",
         "What would be the next steps after this presentation?",
     ]
-

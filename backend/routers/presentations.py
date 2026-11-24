@@ -455,13 +455,14 @@ async def ask_question_live(presentation_id: str, req: AskQuestionRequest) -> di
     Listener asks a question mid-presentation.
     Returns an AI-generated answer (text + TTS audio) in the selected language.
     """
-    doc = presentations_col.find_one({"_id": presentation_id}, {"slides": 1, "language": 1})
+    doc = presentations_col.find_one({"_id": presentation_id}, {"slides": 1, "language": 1, "voice_id": 1})
     if not doc:
         raise HTTPException(status_code=404, detail="Presentation not found.")
 
     slides_context = doc.get("slides", [])
     # Use the stored language if caller doesn't override
     language = req.language or doc.get("language", "en-IN")
+    voice_id = doc.get("voice_id", None)
 
     try:
         async with aiohttp.ClientSession() as session:
@@ -470,6 +471,7 @@ async def ask_question_live(presentation_id: str, req: AskQuestionRequest) -> di
                 slides_context=slides_context,
                 language=language,
                 session=session,
+                voice_id=voice_id,
             )
     except Exception as e:
         print(f"[ask] Error: {safe_str(e)}")

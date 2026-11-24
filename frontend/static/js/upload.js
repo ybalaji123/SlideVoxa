@@ -92,12 +92,51 @@ removeFileBtn.addEventListener('click', () => {
 
 // ---- VOICE SELECTION ----
 const voiceSelect = document.getElementById('voice-select');
+const voiceDesc = document.getElementById('voice-desc');
+
+const ELEVENLABS_VOICES = [
+    { value: '21m00Tcm4TlvDq8ikWAM', label: 'Rachel (Calm, Professional Female)' },
+    { value: '29vD33N1CtxCmqQRPOHJ', label: 'Drew (Engaging, Confident Male)' },
+    { value: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah (Soft, Narrative Female)' },
+    { value: 'VR6AewLTigWG4xSOukaG', label: 'Adam (Deep, Authoritative Male)' },
+];
+
+const SARVAM_VOICES = [
+    { value: 'shubh', label: 'Shubh (Clear, Professional Male)' },
+    { value: 'ratan', label: 'Ratan (Warm Male)' },
+    { value: 'dev', label: 'Dev (Confident Male)' },
+    { value: 'roopa', label: 'Roopa (Clear Female)' },
+    { value: 'kavya', label: 'Kavya (Engaging Female)' },
+    { value: 'priya', label: 'Priya (Soft Female)' },
+    { value: 'simran', label: 'Simran (Expressive Female)' },
+    { value: 'mani', label: 'Mani (Energetic Male)' },
+];
+
+function updateVoiceOptions(language) {
+    if (!voiceSelect) return;
+    voiceSelect.innerHTML = '';
+
+    const voices = (language === 'en-IN') ? ELEVENLABS_VOICES : SARVAM_VOICES;
+    if (voiceDesc) {
+        voiceDesc.textContent = (language === 'en-IN')
+            ? 'Choose an ElevenLabs AI narrator for English presentations.'
+            : 'Choose a Sarvam AI narrator for Indic language presentations.';
+    }
+
+    voices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.value;
+        opt.textContent = v.label;
+        voiceSelect.appendChild(opt);
+    });
+}
 
 // ---- LANGUAGE SELECTION ----
 const langCards = {
     'en-IN': document.getElementById('lang-en-card'),
     'te-IN': document.getElementById('lang-te-card'),
     'ta-IN': document.getElementById('lang-ta-card'),
+    'hi-IN': document.getElementById('lang-hi-card'),
 };
 
 function getSelectedLanguage() {
@@ -116,13 +155,14 @@ function highlightLangCard(selectedValue) {
             card.style.background = 'transparent';
         }
     });
+    updateVoiceOptions(selectedValue);
 }
 
 document.querySelectorAll('input[name="lang-select"]').forEach(radio => {
     radio.addEventListener('change', (e) => highlightLangCard(e.target.value));
 });
 // Also handle click on the label card itself
-['lang-en', 'lang-te', 'lang-ta'].forEach(id => {
+['lang-en', 'lang-te', 'lang-ta', 'lang-hi'].forEach(id => {
     const lbl = document.getElementById(id);
     if (!lbl) return;
     lbl.addEventListener('click', () => {

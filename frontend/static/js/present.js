@@ -538,12 +538,13 @@ function resumeFromQA() {
     if (qaAnswerWaves) qaAnswerWaves.style.display = 'none';
     closeQAPanel();
 
-    // Resume the slide audio from where it stopped (restart current slide audio)
+    // Resume presentation audio from current slide timestamp
     if (currentAudio && typeof currentAudio.play === 'function' && !isPaused) {
         currentAudio.play().catch(() => {});
+        narrationBar.style.display = 'flex';
         narrationText.textContent = 'AI Presenter Speaking...';
+        if (narrationWaves) narrationWaves.style.display = 'flex';
     } else if (!isPaused) {
-        // Re-show current slide to restart audio
         showSlide(currentSlide);
     }
 }

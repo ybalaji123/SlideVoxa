@@ -4,20 +4,19 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SlideVoxa.ai — Let AI Present Your Slides</title>
-  <meta name="description" content="SlideVoxa uses AI to automatically narrate your PowerPoint slides with a professional AI voice narrator. Upload, generate, and present." />
+  <meta name="description" content="Turn PowerPoint presentations into narrated, ready-to-present slide shows with SlideVoxa." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/global.css?v=black-pink-1" />
-  <link rel="stylesheet" href="/static/css/landing.css?v=black-pink-1" />
-    <link rel="icon" type="image/png" href="/static/images/favicon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/global.css?v=landing-stitch-6" />
+  <link rel="stylesheet" href="/static/css/landing.css?v=landing-stitch-6" />
+  <link rel="icon" type="image/png" href="/static/images/favicon.png" />
 </head>
-<body>
-  <!-- NAV -->
-  <nav class="navbar" id="navbar">
+<body class="landing-page">
+  <nav class="navbar" id="navbar" aria-label="Main navigation">
     <div class="nav-container">
-      <a href="/" class="nav-logo" id="nav-logo-link">
-        <img class="brand-horizontal" src="/static/images/slidevoxa-horizontal.png" alt="SlideVoxa.ai" style="display:block;width:160px;height:auto" />
+      <a href="/" class="nav-logo" id="nav-logo-link" aria-label="SlideVoxa home">
+        <img class="brand-horizontal" src="/static/images/slidevoxa-horizontal.png" alt="SlideVoxa" />
       </a>
       <div class="nav-links" id="nav-links">
         <a href="#features" class="nav-link">Features</a>
@@ -31,218 +30,112 @@
     </div>
   </nav>
 
-  <!-- HERO -->
-  <section class="hero" id="hero">
-    <div class="hero-bg">
-      <div class="hero-grid"></div>
-      <div class="hero-glow hero-glow-1"></div>
-      <div class="hero-glow hero-glow-2"></div>
-      <div class="hero-particles" id="particles"></div>
-    </div>
-    <div class="hero-content">
-      <div class="hero-badge">
-        <span class="badge-dot"></span>
-        AI-Powered Presentation Narration
-      </div>
-      <h1 class="hero-title">
-        Let AI <span class="gradient-text">Present</span><br/>Your Slides
-      </h1>
-      <p class="hero-subtitle">
-        Upload your PowerPoint and SlideVoxa automatically presents it<br/>
-        with a professional AI narrator — slide by slide.
-      </p>
-      <div class="hero-cta">
-        <a href="/login" class="btn btn-primary btn-xl" id="hero-cta-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Start Presenting
-        </a>
-        <a href="#how-it-works" class="btn btn-ghost btn-xl">
-          See How It Works
-        </a>
-      </div>
-      <!-- Preview -->
-      <div class="hero-preview">
-        <div class="preview-card preview-main">
-          <div class="preview-header">
-            <div class="preview-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <span class="preview-title-bar">AI Presenter</span>
+  <main>
+    <section class="hero" id="hero">
+      <div class="hero-content">
+        <h1 class="hero-title">Let AI Present Your Slides <span class="gradient-text">Automatically</span></h1>
+        <p class="hero-subtitle">Upload your PowerPoint deck and SlideVoxa prepares a speaker script, narrates each slide, and helps you get ready for audience questions.</p>
+        <div class="hero-cta">
+          <a href="/login" class="btn btn-primary btn-xl" id="hero-cta-btn"><span aria-hidden="true">▶</span> Start Presenting Free</a>
+          <a href="#how-it-works" class="btn btn-ghost btn-xl"><span aria-hidden="true">▤</span> See How It Works</a>
+        </div>
+
+        <div class="studio-preview" aria-label="Illustration of the SlideVoxa presentation studio">
+          <div class="studio-topbar">
+            <div class="studio-file"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>Q3_Healthcare_Keynote.pptx</span></div>
+            <span class="voice-chip"><span aria-hidden="true">◖</span> Voice: Aria (Natural)</span>
           </div>
-          <div class="preview-body">
-            <div class="preview-slides-panel">
-              <div class="preview-slide-thumb active">
-                <div class="thumb-line"></div>
-                <div class="thumb-line short"></div>
-              </div>
-              <div class="preview-slide-thumb">
-                <div class="thumb-line"></div>
-                <div class="thumb-line short"></div>
-              </div>
-              <div class="preview-slide-thumb">
-                <div class="thumb-line"></div>
-                <div class="thumb-line"></div>
-              </div>
-            </div>
-            <div class="preview-main-slide">
-              <h3>AI in Healthcare</h3>
-              <ul>
-                <li>Faster Diagnosis</li>
-                <li>Medical Imaging AI</li>
-                <li>Virtual Health Assistants</li>
-              </ul>
-              <div class="preview-speaking">
-                <div class="speaking-icon">🎙️</div>
-                <span>AI Presenter Speaking...</span>
-                <div class="speaking-bars">
-                  <span></span><span></span><span></span><span></span><span></span>
+          <div class="studio-workspace">
+            <aside class="slide-rail" aria-label="Slide thumbnails">
+              <div class="slide-thumb"><span>1</span><div class="thumb-slide"><b>Q3 AI Strategy</b><i></i><i></i></div></div>
+              <div class="slide-thumb selected"><span>2</span><div class="thumb-slide"><b>AI in Healthcare</b><i></i><i></i><i></i></div></div>
+              <div class="slide-thumb"><span>3</span><div class="thumb-slide"><b>Proposed Solution</b><i></i><i></i></div></div>
+              <div class="slide-thumb"><span>4</span><div class="thumb-slide"><b>Audience Q&amp;A</b><i></i><i></i></div></div>
+            </aside>
+            <div class="studio-main">
+              <div class="presentation-slide">
+                <div class="slide-heading"><span>AI in Healthcare</span><span class="slide-logo">SV</span></div>
+                <div class="slide-rule"></div>
+                <div class="slide-content">
+                  <div class="slide-copy"><b>Smarter care, supported by AI</b><p>Artificial intelligence is helping care teams find insights and make informed decisions.</p><ul><li>Earlier pattern detection</li><li>Support for clinical workflows</li><li>More time for patient care</li></ul></div>
+                  <div class="slide-art" aria-hidden="true"><span>✚</span><i></i><i></i><i></i></div>
                 </div>
+                <div class="slide-caption">A look at how AI can support better healthcare outcomes.</div>
               </div>
+              <div class="studio-controls"><span>◀</span><span class="play-control">▶</span><span>Ⅱ</span><div class="progress-track"><i></i></div><span>1:24</span></div>
             </div>
           </div>
-          <div class="preview-controls">
-            <button class="ctrl-btn">⟨ Prev</button>
-            <button class="ctrl-btn ctrl-play">▶ Next</button>
-            <button class="ctrl-btn">‖ Pause</button>
-            <div class="ctrl-volume">🔊 ──●──</div>
-          </div>
+          <div class="studio-notes"><span class="notes-mark">✦</span><div><b>Narration preview</b><p>“Let’s explore how AI is helping healthcare teams spot patterns earlier and support more informed decisions...”</p></div><span class="notes-time">00:18</span></div>
         </div>
+        <div class="hero-proof"><span>From your deck to a presentation, in a few simple steps</span><span class="proof-line"></span><span>Built for busy presenters</span></div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- FEATURES -->
-  <section class="features-section" id="features">
-    <div class="section-container">
-      <div class="section-header">
-        <div class="section-badge">Features</div>
-        <h2 class="section-title">Everything You Need to<br/><span class="gradient-text">Present Professionally</span></h2>
-        <p class="section-subtitle">From upload to narration in minutes — no recording studio needed.</p>
-      </div>
-      <div class="features-grid">
-        <div class="feature-card" id="feat-upload">
-          <div class="feature-icon-wrap" style="--c1:#00C6FF;--c2:#0072FF">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </div>
-          <h3>Upload PowerPoint</h3>
-          <p>Support for .ppt and .pptx files. We extract titles, bullet points, and all text content automatically.</p>
+    <section class="features-section page-section" id="features">
+      <div class="section-container">
+        <div class="section-header">
+          <div class="section-badge">The Process</div>
+          <h2 class="section-title">Everything You Need to<br /><span class="gradient-text">Present Professionally</span></h2>
+          <p class="section-subtitle">See how SlideVoxa transforms a raw PowerPoint deck into a narrated, Q&amp;A-ready presentation in six automated stages.</p>
         </div>
-        <div class="feature-card" id="feat-script">
-          <div class="feature-icon-wrap" style="--c1:#7B2FFF;--c2:#00C6FF">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-          </div>
-          <h3>AI Script Generation</h3>
-          <p>Sarvam AI converts each slide's content into a natural, engaging speaking script — just like a real presenter.</p>
-        </div>
-        <div class="feature-card" id="feat-voice">
-          <div class="feature-icon-wrap" style="--c1:#FF6B35;--c2:#F7931E">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
-          </div>
-          <h3>AI Voice Narration</h3>
-          <p>Natural-sounding AI voices powered by ElevenLabs. Upload your own voice sample for a personal touch.</p>
-        </div>
-        <div class="feature-card" id="feat-present">
-          <div class="feature-icon-wrap" style="--c1:#00FF88;--c2:#00C6FF">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-          </div>
-          <h3>Auto Presentation Player</h3>
-          <p>Slides advance automatically as narration plays. Full controls: prev, next, pause, and volume slider.</p>
-        </div>
-        <div class="feature-card" id="feat-questions">
-          <div class="feature-icon-wrap" style="--c1:#FF2D55;--c2:#FF6B35">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </div>
-          <h3>Audience Q&A Generator</h3>
-          <p>After the presentation, AI generates likely audience questions so you can prepare perfect answers.</p>
-        </div>
-        <div class="feature-card" id="feat-db">
-          <div class="feature-icon-wrap" style="--c1:#7B2FFF;--c2:#FF2D55">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-          </div>
-          <h3>Cloud Storage</h3>
-          <p>All presentations stored securely in MongoDB Atlas. Access your presentation history anytime.</p>
+        <div class="process-timeline">
+          <article class="process-step process-left">
+            <span class="process-marker">01</span>
+            <div class="process-card"><img src="/static/images/stitch-feature-1.jpg" alt="Presenter uploading a PowerPoint at a desk" loading="lazy" /><div class="process-copy"><div class="process-title-row"><h3>Upload PowerPoint</h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6m-3 3h6"/></svg></div><p>Drop any .ppt or .pptx file. SlideVoxa parses every slide, extracting titles, bullet points, and speaker notes cleanly.</p></div></div>
+          </article>
+          <article class="process-step process-right">
+            <span class="process-marker">02</span>
+            <div class="process-card"><img src="/static/images/stitch-feature-2.jpg" alt="Reviewing an AI-generated presentation script" loading="lazy" /><div class="process-copy"><div class="process-title-row"><h3>AI Script Generation</h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h11M4 18h8"/><path d="m17 17 2 2 3-4"/></svg></div><p>Sarvam AI turns raw slide bullets into a smooth, conversational speaking script with natural transitions.</p></div></div>
+          </article>
+          <article class="process-step process-left">
+            <span class="process-marker">03</span>
+            <div class="process-card"><img src="/static/images/stitch-feature-3.jpg" alt="Studio microphone beside a laptop" loading="lazy" /><div class="process-copy"><div class="process-title-row"><h3>AI Voice Narration</h3><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 11a7 7 0 0 0 14 0m-7 7v4m-4 0h8"/></svg></div><p>ElevenLabs renders lifelike studio audio for each slide, or upload a 2-minute sample for your own voice.</p></div></div>
+          </article>
+          <article class="process-step process-right">
+            <span class="process-marker">04</span>
+            <div class="process-card"><img src="/static/images/stitch-feature-4.jpg" alt="Presenter reviewing an automated slide presentation" loading="lazy" /><div class="process-copy"><div class="process-title-row"><h3>Presentation Player</h3><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="m10 7 5 3-5 3zM8 21h8m-4-4v4"/></svg></div><p>Move through your slides with narration and playback controls in one presentation view.</p></div></div>
+          </article>
+          <article class="process-step process-left">
+            <span class="process-marker">05</span>
+            <div class="process-card"><img src="/static/images/stitch-feature-5.jpg" alt="Presenter speaking to an audience" loading="lazy" /><div class="process-copy"><div class="process-title-row"><h3>Audience Q&amp;A Prep</h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/><path d="M9.5 9a2.5 2.5 0 0 1 4.8 1c0 1.7-2.3 2-2.3 3.5m0 3h.01"/></svg></div><p>Prepare for likely audience questions after your presentation is ready.</p></div></div>
+          </article>
+          <article class="process-step process-right">
+            <span class="process-marker">06</span>
+            <div class="process-card"><img src="/static/images/stitch-feature-6.jpg" alt="Presentation decks open on a laptop and tablet" loading="lazy" /><div class="process-copy"><div class="process-title-row"><h3>Cloud Library</h3><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 16.2A4.5 4.5 0 0 0 18 7.5a6 6 0 0 0-11.5 1A4 4 0 0 0 7 16.5h13z"/><path d="M8 20h12M8 23h12"/></svg></div><p>Keep your presentations together and return to them from your dashboard.</p></div></div>
+          </article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- HOW IT WORKS -->
-  <section class="how-section" id="how-it-works">
-    <div class="section-container">
-      <div class="section-header">
-        <div class="section-badge">How It Works</div>
-        <h2 class="section-title">From Upload to <span class="gradient-text">Presentation</span><br/>in 3 Simple Steps</h2>
-      </div>
-      <div class="steps-container">
-        <div class="step-item" id="step-1">
-          <div class="step-number">01</div>
-          <div class="step-content">
-            <h3>Upload Your Slides</h3>
-            <p>Drag and drop your .pptx file. Optionally upload a 2-minute voice recording for custom narration tone.</p>
-          </div>
-          <div class="step-icon">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="url(#grad1)" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><defs><linearGradient id="grad1" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stop-color="#00C6FF"/><stop offset="100%" stop-color="#7B2FFF"/></linearGradient></defs></svg>
-          </div>
-        </div>
-        <div class="step-connector"></div>
-        <div class="step-item" id="step-2">
-          <div class="step-number">02</div>
-          <div class="step-content">
-            <h3>AI Generates Everything</h3>
-            <p>Our AI reads each slide, writes a speaking script, and converts it to natural-sounding audio narration.</p>
-          </div>
-          <div class="step-icon">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="url(#grad2)" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/><defs><linearGradient id="grad2" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stop-color="#7B2FFF"/><stop offset="100%" stop-color="#FF6B35"/></linearGradient></defs></svg>
-          </div>
-        </div>
-        <div class="step-connector"></div>
-        <div class="step-item" id="step-3">
-          <div class="step-number">03</div>
-          <div class="step-content">
-            <h3>Present Automatically</h3>
-            <p>Click Start Presentation. Slides advance with synchronized narration. AI generates audience questions at the end.</p>
-          </div>
-          <div class="step-icon">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="url(#grad3)" stroke-width="1.5"><polygon points="5 3 19 12 5 21 5 3"/><defs><linearGradient id="grad3" x1="0" y1="0" x2="24" y2="24"><stop offset="0%" stop-color="#00FF88"/><stop offset="100%" stop-color="#00C6FF"/></linearGradient></defs></svg>
-          </div>
+    <section class="how-section page-section" id="how-it-works">
+      <div class="section-container">
+        <div class="section-header"><div class="section-badge">How It Works</div><h2 class="section-title">From Upload to <span class="gradient-text">Presentation</span><br />in 3 Simple Steps</h2><p class="section-subtitle">A straightforward workflow to help you spend less time preparing and more time presenting.</p></div>
+        <div class="steps-container">
+          <article class="step-item"><div class="step-number">01</div><div class="step-content"><h3>Upload Your Slides</h3><p>Add your PowerPoint deck and, if you like, a voice sample for narration.</p></div><div class="step-icon" aria-hidden="true">↑</div></article>
+          <article class="step-item"><div class="step-number">02</div><div class="step-content"><h3>Review Your Narration</h3><p>SlideVoxa prepares the speaker script and narration for your presentation.</p></div><div class="step-icon" aria-hidden="true">✦</div></article>
+          <article class="step-item"><div class="step-number">03</div><div class="step-content"><h3>Present with Confidence</h3><p>Open your finished presentation and move through the slides with playback controls.</p></div><div class="step-icon" aria-hidden="true">▷</div></article>
         </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- CTA SECTION -->
-  <section class="cta-section" id="cta">
-    <div class="cta-glow"></div>
-    <div class="section-container">
-      <div class="cta-content">
-        <h2 class="cta-title">Ready to Let AI <span class="gradient-text">Present for You?</span></h2>
-        <p class="cta-subtitle">Join thousands of presenters who automate their presentations with SlideVoxa.</p>
-        <a href="/login" class="btn btn-primary btn-xl" id="cta-final-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Get Started Free
-        </a>
+    <section class="pricing-section page-section" id="pricing">
+      <div class="section-container">
+        <div class="section-header"><div class="section-badge">Pricing</div><h2 class="section-title">Simple Plans for Every <span class="gradient-text">Presenter</span></h2><p class="section-subtitle">Choose a starting point for the way you create and present.</p></div>
+        <div class="pricing-grid">
+          <article class="pricing-card"><div><h3>Starter</h3><p class="plan-description">Try AI narration on your first decks.</p><div class="plan-price">$0 <small>/ month</small></div><ul><li>Up to 3 presentations / month</li><li>Standard AI narrator voices</li><li>Auto slide sync player</li></ul></div><a class="btn btn-ghost plan-button" href="/login">Start Free</a></article>
+          <article class="pricing-card popular"><div class="plan-heading"><h3>Pro Presenter</h3><span class="popular-tag">Most Popular</span></div><p class="plan-description">Custom narration and Q&amp;A preparation.</p><div class="plan-price">$19 <small>/ month</small></div><ul><li>Unlimited .ppt / .pptx uploads</li><li>Custom voice sample</li><li>AI audience Q&amp;A preparation</li></ul><a class="btn btn-primary plan-button" href="/login">Get Pro Access</a></article>
+          <article class="pricing-card"><div><h3>Team</h3><p class="plan-description">Shared decks and presentation history for teams.</p><div class="plan-price">$49 <small>/ month</small></div><ul><li>Team presentation workspace</li><li>Shared presentation library</li><li>Priority support</li></ul></div><a class="btn btn-ghost plan-button" href="/login">Get Started</a></article>
+        </div>
+        <p class="pricing-note">Plan details shown for reference. Sign in to see the options available to your account.</p>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- FOOTER -->
-  <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-logo">
-        <img class="brand-lockup" src="/static/images/slidevoxa-logo.png" alt="SlideVoxa" style="display:block;width:140px;height:auto" />
-        <p>AI-powered presentation narration for everyone.</p>
-      </div>
-      <div class="footer-links">
-        <a href="#features">Features</a>
-        <a href="#how-it-works">How It Works</a>
-        <a href="/login">Get Started</a>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <p>© 2025 SlideVoxa.ai — All rights reserved.</p>
-    </div>
-  </footer>
+    <section class="cta-section" id="cta">
+      <div class="section-container cta-content"><div class="section-badge">SlideVoxa AI Presenter</div><h2 class="cta-title">Ready to Let AI<br /><span class="gradient-text">Present for You?</span></h2><p class="cta-subtitle">Bring your slides and get started with a more prepared presentation.</p><a href="/login" class="btn btn-primary btn-xl" id="cta-final-btn">Start Presenting Free <span aria-hidden="true">→</span></a></div>
+    </section>
+  </main>
 
+  <footer class="footer"><div class="footer-container"><div class="footer-logo"><img class="brand-lockup" src="/static/images/slidevoxa-logo.png" alt="SlideVoxa" /><p>AI-powered presentation narration for everyone.</p></div><div class="footer-links"><a href="#features">Features</a><a href="#how-it-works">How It Works</a><a href="#pricing">Pricing</a><a href="/login">Get Started</a></div></div><div class="footer-bottom"><p>© 2025 SlideVoxa.ai — All rights reserved.</p></div></footer>
   <script src="/static/js/landing.js"></script>
 </body>
 </html>

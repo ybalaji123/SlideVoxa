@@ -82,11 +82,36 @@ async function loadPresentations() {
             const card = document.createElement('div');
             card.className = 'pres-card';
             const statusClass = p.status === 'ready' ? 'status-ready' : p.status === 'processing' ? 'status-processing' : 'status-error';
-            const statusLabel = p.status === 'ready' ? '● Ready' : p.status === 'processing' ? '◌ Processing' : '✕ Error';
+            const statusLabel = p.status === 'ready' ? 'Ready' : p.status === 'processing' ? 'Processing' : 'Error';
+            const filename = p.filename || p.title || 'Presentation';
+            const firstSlide = p.first_slide || {};
+            const slidePoints = Array.isArray(firstSlide.points)
+                ? firstSlide.points.map(point => String(point).trim()).filter(Boolean).slice(0, 4)
+                : [];
+            const extractedTitle = String(firstSlide.title || '').trim();
+            const previewTitle = extractedTitle && !/^slide\s*\d+$/i.test(extractedTitle)
+                ? extractedTitle
+                : (p.title || 'Slide 1');
+            const previewText = slidePoints.length
+                ? `<ul>${slidePoints.map(point => `<li>${escapeHtml(point)}</li>`).join('')}</ul>`
+                : firstSlide.script
+                    ? `<p class="pres-slide-empty">${escapeHtml(firstSlide.script)}</p>`
+                    : '<p class="pres-slide-empty">No text was extracted from this slide.</p>';
 
             card.innerHTML = `
-        <div class="pres-card-icon">📊</div>
-        <div class="pres-card-title" title="${escapeHtml(p.title)}">${escapeHtml(p.title)}</div>
+        <div class="pres-card-preview" aria-label="Preview of the first slide">
+          <div class="pres-preview-topbar">
+            <span class="pres-preview-filetype">${escapeHtml(filename.split('.').pop().toUpperCase())}</span>
+            <span class="status-pill ${statusClass}">${statusLabel}</span>
+          </div>
+          <div class="pres-preview-stage">
+            <div class="pres-slide-copy">
+              <h4>${escapeHtml(previewTitle)}</h4>
+              ${previewText}
+            </div>
+          </div>
+        </div>
+        <div class="pres-card-title" title="${escapeHtml(filename)}">${escapeHtml(filename)}</div>
         <div class="pres-card-meta">
           <span>${p.slide_count} slides</span>
           <span>${formatDate(p.created_at)}</span>
@@ -105,6 +130,15 @@ async function loadPresentations() {
           <button class="btn btn-ghost btn-sm" onclick="deletePresentation('${p.id}')">Delete</button>
         </div>
       `;
+            const previewStage = card.querySelector('.pres-preview-stage');
+            const previewImage = new Image();
+            previewImage.className = 'pres-slide-image';
+            previewImage.alt = `First slide preview of ${filename}`;
+            previewImage.loading = 'lazy';
+            previewImage.decoding = 'async';
+            previewImage.addEventListener('error', () => previewImage.remove(), { once: true });
+            previewImage.src = `${API_BASE}/api/presentations/${encodeURIComponent(p.id)}/thumbnail`;
+            previewStage.appendChild(previewImage);
             grid.appendChild(card);
         });
     } catch (err) {
@@ -133,7 +167,12 @@ async function deletePresentation(id) {
 }
 
 function escapeHtml(str) {
-    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 document.getElementById('refresh-btn').addEventListener('click', loadPresentations);

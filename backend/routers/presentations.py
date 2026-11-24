@@ -7,6 +7,7 @@ import aiofiles
 import aiohttp
 from typing import Annotated
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks
+from fastapi.responses import Response
 from bson.objectid import ObjectId
 
 import sys
@@ -343,19 +344,72 @@ def get_slide_detail(presentation_id: str, index: int) -> dict:
     }
 
 
+@router.get("/{presentation_id}/thumbnail")
+def get_first_slide_thumbnail(presentation_id: str) -> Response:
+    """Serve only the first slide image for lightweight dashboard previews."""
+    media = media_col.find_one(
+        {"presentation_id": presentation_id, "slide_number": 1},
+        {"image_data_uri": 1, "_id": 0},
+    )
+    image_data_uri = media.get("image_data_uri") if media else None
+
+    if not image_data_uri:
+        doc = presentations_col.find_one(
+            {"_id": presentation_id},
+            {"slides": {"$slice": [0, 1]}},
+        )
+        slides = doc.get("slides", []) if doc else []
+        image_data_uri = slides[0].get("image_data_uri") if slides else None
+
+    if not image_data_uri or "," not in image_data_uri:
+        raise HTTPException(status_code=404, detail="First slide preview is not available yet.")
+
+    metadata, encoded_image = image_data_uri.split(",", 1)
+    media_type = metadata.removeprefix("data:").split(";", 1)[0] or "image/png"
+    try:
+        image_bytes = base64.b64decode(encoded_image)
+    except Exception:
+        raise HTTPException(status_code=404, detail="First slide preview is unavailable.")
+    return Response(
+        content=image_bytes,
+        media_type=media_type,
+        headers={"Cache-Control": "private, max-age=300"},
+    )
+
+
 # ── USER PRESENTATIONS ────────────────────────────────────────────────────────
 @router.get("/user/{user_id}")
 def get_user_presentations(user_id: str) -> list[dict]:
     """Get all presentations belonging to a user."""
-    docs = list(presentations_col.find({"user_id": user_id}, {"slides": 0}))
+    projection = {
+        "_id": 1,
+        "title": 1,
+        "filename": 1,
+        "status": 1,
+        "slide_count": 1,
+        "created_at": 1,
+        "slides": {"$slice": 1},
+    }
+    docs = list(presentations_col.find({"user_id": user_id}, projection))
     result = []
     for doc in docs:
+        slides = doc.get("slides", [])
+        first_slide = slides[0] if slides else {}
+        points = first_slide.get("points", [])
+        if not isinstance(points, list):
+            points = [points] if points else []
         result.append({
             "id": str(doc.get("_id", "")),
             "title": doc.get("title", ""),
+            "filename": doc.get("filename", ""),
             "status": doc.get("status", ""),
             "slide_count": doc.get("slide_count", 0),
             "created_at": doc.get("created_at", ""),
+            "first_slide": {
+                "title": str(first_slide.get("title", "")),
+                "points": [str(point) for point in points if point is not None][:6],
+                "script": str(first_slide.get("script", "")),
+            },
         })
     return result
 

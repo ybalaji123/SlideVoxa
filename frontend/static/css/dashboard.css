@@ -409,6 +409,12 @@
     object-fit: contain;
 }
 
+.sidebar-logo-full {
+    display: block;
+    width: 150px;
+    height: auto;
+}
+
 .sidebar-toggle {
     position: absolute;
     top: 29px;
@@ -510,6 +516,105 @@ body.sidebar-collapsed .sidebar-toggle svg {
 .pres-card-meta,
 .pres-card-actions {
     flex-wrap: wrap;
+}
+
+.pres-card {
+    padding: 12px;
+}
+
+.pres-card-preview {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.pres-preview-topbar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex: 0 0 28px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 9px;
+    border-bottom: 1px solid #edf0f3;
+    background: rgba(255, 255, 255, 0.96);
+}
+
+.pres-preview-filetype {
+    color: #9b2f00;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.pres-preview-topbar .status-pill {
+    padding: 2px 7px;
+    font-size: 9px;
+}
+
+.pres-preview-stage {
+    position: relative;
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    align-items: center;
+    padding: 12px 15px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #fbfbfc 100%);
+}
+
+.pres-slide-copy {
+    width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    color: #343943;
+}
+
+.pres-slide-copy h4 {
+    margin: 0 0 7px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #f0b4c8;
+    color: #17191e;
+    font-size: clamp(10px, 1vw, 13px);
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.pres-slide-copy ul {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding-left: 15px;
+}
+
+.pres-slide-copy li,
+.pres-slide-empty {
+    overflow: hidden;
+    color: #606672;
+    font-size: clamp(8px, 0.8vw, 10px);
+    line-height: 1.35;
+    text-overflow: ellipsis;
+}
+
+.pres-slide-copy li::marker {
+    color: #b75273;
+}
+
+.pres-slide-image {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: #ffffff;
+    object-fit: contain;
 }
 
 @media (max-width: 768px) {

@@ -21,7 +21,7 @@
 }
 .landing-page .nav-container { display: flex; align-items: center; max-width: 1180px; height: 72px; margin: 0 auto; gap: 28px; }
 .landing-page .nav-logo img { display: block; width: 154px; height: auto; }
-.landing-page .nav-links { gap: 30px; margin-left: auto; }
+.landing-page .nav-links { display: flex; align-items: center; gap: 30px; margin-left: auto; }
 .landing-page .nav-link { color: #555b65; font-size: 14px; font-weight: 600; }
 .landing-page .nav-link:hover { color: var(--ink); }
 .landing-page .nav-actions { gap: 10px; }

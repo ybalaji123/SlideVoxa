@@ -1,4 +1,6 @@
 # SlideVoxa
+**Server deployment note:** The presentation player renders the uploaded PPTX into slide images. Configure the web service to use the Docker runtime and this repository's `Dockerfile` so LibreOffice Impress and Poppler are available to render each original slide. The Docker image keeps the uploaded slide artwork intact in the web player.
+
 **About:**
 SlideVoxa is an AI-powered web application designed to transform traditional PowerPoint presentations into engaging, narrated presentations automatically. Many presenters spend significant time preparing scripts and practicing narration for their slides. SlideVoxa simplifies this process by automatically generating presentation scripts and natural-sounding voiceovers directly from slide content.
 

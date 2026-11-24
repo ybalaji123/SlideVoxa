@@ -3,6 +3,7 @@ import uuid
 import base64
 import traceback
 import asyncio
+import threading
 import aiofiles
 import aiohttp
 from typing import Annotated
@@ -45,6 +46,50 @@ router = APIRouter(prefix="/api/presentations", tags=["presentations"])
 
 UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
+_slide_render_locks: dict[str, threading.Lock] = {}
+_slide_render_locks_guard = threading.Lock()
+
+
+def ensure_original_slide_images(
+    presentation_id: str,
+    content: bytes | None = None,
+    required_slide: int = 1,
+) -> None:
+    """Render and cache the original uploaded deck when slide images are missing."""
+    with _slide_render_locks_guard:
+        lock = _slide_render_locks.setdefault(presentation_id, threading.Lock())
+
+    with lock:
+        existing = media_col.find_one(
+            {"presentation_id": presentation_id, "slide_number": required_slide},
+            {"image_data_uri": 1, "_id": 0},
+        )
+        if existing and existing.get("image_data_uri"):
+            return
+
+        if content is None:
+            doc = presentations_col.find_one({"_id": presentation_id}, {"pptx_file_id": 1})
+            file_id = doc.get("pptx_file_id") if doc else None
+            if not file_id:
+                return
+            try:
+                content = fs.get(ObjectId(file_id)).read()
+            except Exception as error:
+                print(f"[render] Could not load uploaded PPTX: {safe_str(error)}")
+                return
+
+        try:
+            rendered_slides = extract_slides(content, presentation_id)
+            for slide in rendered_slides:
+                if slide.get("image_data_uri"):
+                    media_col.update_one(
+                        {"presentation_id": presentation_id, "slide_number": slide["slide_number"]},
+                        {"$set": {"image_data_uri": slide["image_data_uri"]}},
+                        upsert=True,
+                    )
+            print(f"[render] Cached {sum(bool(s.get('image_data_uri')) for s in rendered_slides)} original slide images")
+        except Exception as error:
+            print(f"[render] Could not render original slide images: {safe_str(error)}")
 
 
 # ── UPLOAD ──────────────────────────────────────────────────────────────────
@@ -322,7 +367,10 @@ def get_presentation_status(presentation_id: str) -> dict:
 def get_slide_detail(presentation_id: str, index: int) -> dict:
     """Fetch full image and audio data for a single slide by index (1-based) from media collection."""
     media = media_col.find_one({"presentation_id": presentation_id, "slide_number": index})
-    
+    if not media or not media.get("image_data_uri"):
+        ensure_original_slide_images(presentation_id, required_slide=index)
+        media = media_col.find_one({"presentation_id": presentation_id, "slide_number": index})
+
     if not media:
         # Backwards compatibility check for older data
         doc = presentations_col.find_one(
@@ -344,37 +392,62 @@ def get_slide_detail(presentation_id: str, index: int) -> dict:
     }
 
 
-@router.get("/{presentation_id}/thumbnail")
-def get_first_slide_thumbnail(presentation_id: str) -> Response:
-    """Serve only the first slide image for lightweight dashboard previews."""
+def _render_slide_thumbnail(presentation_id: str, index: int) -> Response:
+    """Return a small image-only response for dashboard or slide-rail thumbnails."""
+    if index < 1:
+        raise HTTPException(status_code=404, detail="Slide not found.")
     media = media_col.find_one(
-        {"presentation_id": presentation_id, "slide_number": 1},
+        {"presentation_id": presentation_id, "slide_number": index},
         {"image_data_uri": 1, "_id": 0},
     )
     image_data_uri = media.get("image_data_uri") if media else None
 
     if not image_data_uri:
+        ensure_original_slide_images(presentation_id, required_slide=index)
+        media = media_col.find_one(
+            {"presentation_id": presentation_id, "slide_number": index},
+            {"image_data_uri": 1, "_id": 0},
+        )
+        image_data_uri = media.get("image_data_uri") if media else None
+
+    if not image_data_uri:
         doc = presentations_col.find_one(
             {"_id": presentation_id},
-            {"slides": {"$slice": [0, 1]}},
+            {"slides": {"$slice": [index - 1, 1]}},
         )
         slides = doc.get("slides", []) if doc else []
         image_data_uri = slides[0].get("image_data_uri") if slides else None
 
     if not image_data_uri or "," not in image_data_uri:
-        raise HTTPException(status_code=404, detail="First slide preview is not available yet.")
+        raise HTTPException(status_code=404, detail="Slide preview is not available yet.")
 
     metadata, encoded_image = image_data_uri.split(",", 1)
-    media_type = metadata.removeprefix("data:").split(";", 1)[0] or "image/png"
     try:
         image_bytes = base64.b64decode(encoded_image)
+        from PIL import Image
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        resampling = getattr(Image, "Resampling", Image)
+        image.thumbnail((480, 270), resampling.LANCZOS)
+        thumb_buffer = io.BytesIO()
+        image.save(thumb_buffer, format="JPEG", quality=78, optimize=True)
+        image_bytes = thumb_buffer.getvalue()
     except Exception:
-        raise HTTPException(status_code=404, detail="First slide preview is unavailable.")
+        raise HTTPException(status_code=404, detail="Slide preview is unavailable.")
     return Response(
         content=image_bytes,
-        media_type=media_type,
+        media_type="image/jpeg",
         headers={"Cache-Control": "private, max-age=300"},
     )
+
+
+@router.get("/{presentation_id}/thumbnail")
+def get_first_slide_thumbnail(presentation_id: str) -> Response:
+    return _render_slide_thumbnail(presentation_id, 1)
+
+
+@router.get("/{presentation_id}/thumbnail/{index}")
+def get_slide_thumbnail(presentation_id: str, index: int) -> Response:
+    return _render_slide_thumbnail(presentation_id, index)
 
 
 # ── USER PRESENTATIONS ────────────────────────────────────────────────────────

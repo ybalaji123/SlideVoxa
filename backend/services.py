@@ -34,6 +34,8 @@ print(f"[services] ElevenLabs key loaded: {'YES' if ELEVENLABS_API_KEY else 'MIS
 import io
 import tempfile
 import shutil
+import subprocess
+import re
 
 def fast_extract_text(content: bytes) -> list[dict]:
     """Extremely fast text extraction using python-pptx (milliseconds)."""
@@ -66,90 +68,129 @@ def fast_extract_text(content: bytes) -> list[dict]:
         print(f"[fast_extract] Failed: {safe_str(e)}")
         return []
 
+def _render_pptx_with_libreoffice(temp_pptx: str, temp_dir: str, slide_count: int) -> dict[int, str]:
+    """Render each PPTX slide through LibreOffice and Poppler on Linux hosts."""
+    soffice = shutil.which("soffice") or shutil.which("libreoffice")
+    pdftoppm = shutil.which("pdftoppm")
+    if not soffice or not pdftoppm:
+        raise RuntimeError("Slide rendering needs LibreOffice Impress and Poppler (pdftoppm).")
+
+    pdf_dir = os.path.join(temp_dir, "pdf")
+    os.makedirs(pdf_dir, exist_ok=True)
+    profile_dir = os.path.join(temp_dir, "lo-profile")
+    profile_uri = "file://" + os.path.abspath(profile_dir)
+    convert = subprocess.run(
+        [soffice, "--headless", f"-env:UserInstallation={profile_uri}", "--convert-to", "pdf", "--outdir", pdf_dir, temp_pptx],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    pdf_path = os.path.join(pdf_dir, os.path.splitext(os.path.basename(temp_pptx))[0] + ".pdf")
+    if convert.returncode != 0 or not os.path.isfile(pdf_path):
+        raise RuntimeError(f"LibreOffice could not convert the presentation: {safe_str(convert.stderr or convert.stdout)}")
+
+    image_prefix = os.path.join(temp_dir, "slide")
+    render = subprocess.run(
+        [pdftoppm, "-png", "-r", "144", "-f", "1", "-l", str(slide_count), pdf_path, image_prefix],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        check=False,
+    )
+    image_paths = sorted(
+        (os.path.join(temp_dir, name) for name in os.listdir(temp_dir) if re.fullmatch(r"slide-\d+\.png", name)),
+        key=lambda path: int(os.path.basename(path).rsplit("-", 1)[1].split(".", 1)[0]),
+    )
+    if render.returncode != 0 or not image_paths:
+        raise RuntimeError(f"Poppler could not render the presentation: {safe_str(render.stderr or render.stdout)}")
+
+    images = {}
+    for index, image_path in enumerate(image_paths, 1):
+        with open(image_path, "rb") as image_file:
+            images[index] = "data:image/png;base64," + base64.b64encode(image_file.read()).decode("ascii")
+    return images
+
+
 def extract_slides(content: bytes, presentation_id: str) -> list[dict]:
-    """Extract slide components using stable slide-by-slide export for maximum reliability."""
+    """Extract slide text and render the original uploaded slide artwork."""
     slide_image_b64 = {}
     temp_dir = tempfile.mkdtemp(prefix="slidevoxa_")
     temp_pptx = os.path.join(temp_dir, "temp_pres.pptx")
+    with open(temp_pptx, "wb") as pptx_file:
+        pptx_file.write(content)
 
-    with open(temp_pptx, "wb") as f:
-        f.write(content)
-
-    print(f"[extract] Starting extraction for {presentation_id} at {safe_str(temp_pptx)}")
-
-    try:
-        import win32com.client
-        import pythoncom
-        pythoncom.CoInitialize()
-
-        # Use a fresh instance of PowerPoint
-        powerpoint = win32com.client.DispatchEx("PowerPoint.Application")
-        powerpoint.Visible = False # Run invisibly
-
-        abs_temp_pptx = os.path.abspath(temp_pptx)
-
-        # Open presentation
-        # Open(Filename, ReadOnly, Untitled, WithWindow)
-        presentation = powerpoint.Presentations.Open(abs_temp_pptx, ReadOnly=1, WithWindow=False)
-
-        total_slides = presentation.Slides.Count
-        print(f"[extract] PowerPoint slide count: {total_slides}")
-
-        # Get dimensions for crisp PNG export (1.5x to 2x scale for beauty)
-        slide_width_pts = presentation.PageSetup.SlideWidth
-        slide_height_pts = presentation.PageSetup.SlideHeight
-        export_width = 1600 # Premium resolution
-        export_height = int(export_width * slide_height_pts / slide_width_pts)
-
-        for i, slide in enumerate(presentation.Slides, 1):
-            img_path = os.path.join(temp_dir, f"s_{i}.png")
-            # Export(FileName, FilterName, ScaleWidth, ScaleHeight)
-            slide.Export(img_path, "PNG", export_width, export_height)
-
-            if os.path.exists(img_path):
-                with open(img_path, "rb") as im_f:
-                    im_bytes = im_f.read()
-                slide_image_b64[i] = "data:image/png;base64," + base64.b64encode(im_bytes).decode("utf-8")
-                if i % 5 == 0: print(f"[extract] Exported {i}/{total_slides} slides...")
-            else:
-                print(f"[extract] WARNING: Failed to export slide {i}")
-
-        presentation.Close()
-        # powerpoint.Quit() # Don't quit if others are using it, but we used DispatchEx so we should
-        try: powerpoint.Quit()
-        except: pass
-
-        print(f"[extract] Successfully exported {len(slide_image_b64)} images")
-    except Exception as e:
-        import traceback
-        print(f"[extract] FAILED: {safe_str(e)}")
-        print(f"[extract] {safe_str(traceback.format_exc())}")
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        try: pythoncom.CoUninitialize()
-        except: pass
-
-    # Combine with text extraction
     prs = Presentation(io.BytesIO(content))
+    print(f"[extract] Rendering {len(prs.slides)} slides for {safe_str(presentation_id)}")
+
+    if os.name == "nt":
+        powerpoint = None
+        presentation = None
+        pythoncom = None
+        try:
+            import win32com.client
+            import pythoncom as com_runtime
+            pythoncom = com_runtime
+            pythoncom.CoInitialize()
+            powerpoint = win32com.client.DispatchEx("PowerPoint.Application")
+            powerpoint.Visible = False
+            presentation = powerpoint.Presentations.Open(os.path.abspath(temp_pptx), ReadOnly=1, WithWindow=False)
+            width = 1600
+            height = int(width * presentation.PageSetup.SlideHeight / presentation.PageSetup.SlideWidth)
+            for index, slide in enumerate(presentation.Slides, 1):
+                image_path = os.path.join(temp_dir, f"slide-{index}.png")
+                slide.Export(image_path, "PNG", width, height)
+                if os.path.isfile(image_path):
+                    with open(image_path, "rb") as image_file:
+                        slide_image_b64[index] = "data:image/png;base64," + base64.b64encode(image_file.read()).decode("ascii")
+        except Exception as error:
+            print(f"[extract] PowerPoint rendering failed: {safe_str(error)}")
+        finally:
+            try:
+                if presentation is not None:
+                    presentation.Close()
+            except Exception:
+                pass
+            try:
+                if powerpoint is not None:
+                    powerpoint.Quit()
+            except Exception:
+                pass
+            try:
+                if pythoncom is not None:
+                    pythoncom.CoUninitialize()
+            except Exception:
+                pass
+
+    if len(slide_image_b64) < len(prs.slides):
+        try:
+            slide_image_b64 = _render_pptx_with_libreoffice(temp_pptx, temp_dir, len(prs.slides))
+            print(f"[extract] LibreOffice rendered {len(slide_image_b64)} original slides")
+        except Exception as error:
+            print(f"[extract] Cross-platform rendering failed: {safe_str(error)}")
+
     slides_data = []
-    for i, slide in enumerate(prs.slides, 1):
+    for index, slide in enumerate(prs.slides, 1):
         title = ""
         points = []
         for shape in slide.shapes:
-            if shape.has_text_frame:
-                text = shape.text_frame.text.strip()
-                if text:
-                    if getattr(shape, "is_placeholder", False) and shape.placeholder_format.idx in (0,1):
-                        title = text
-                    else:
-                        points.append(text)
-
+            if not shape.has_text_frame:
+                continue
+            text = shape.text_frame.text.strip()
+            if not text:
+                continue
+            if getattr(shape, "is_placeholder", False) and shape.placeholder_format.idx in (0, 1):
+                title = text
+            else:
+                points.append(text)
         slides_data.append({
-            "slide_number": i,
-            "title": title or f"Slide {i}",
+            "slide_number": index,
+            "title": title or f"Slide {index}",
             "points": list(dict.fromkeys(points)),
-            "image_data_uri": slide_image_b64.get(i),
+            "image_data_uri": slide_image_b64.get(index),
         })
+
+    shutil.rmtree(temp_dir, ignore_errors=True)
     return slides_data
 
 
@@ -386,13 +427,26 @@ async def async_answer_question(question: str, slides_context: list[dict], langu
     """
     lang_name = _LANG_NAMES.get(language, "English")
 
-    # Build concise context from slide titles + points
+    # Keep slide titles, extracted text, and generated narration in the answer context.
     ctx_parts = []
-    for s in slides_context[:15]:  # limit context size
-        title = s.get("title", "")
-        pts = "; ".join(s.get("points", [])[:3])
-        ctx_parts.append(f"Slide {s.get('slide_number', '?')}: {title}" + (f" — {pts}" if pts else ""))
-    context_str = "\n".join(ctx_parts)
+    context_size = 0
+    for slide in slides_context:
+        title = str(slide.get("title", ""))[:240]
+        points = slide.get("points", []) or []
+        if not isinstance(points, list):
+            points = [points]
+        point_text = "; ".join(str(point)[:320] for point in points[:8] if point)
+        script = str(slide.get("script", ""))[:700]
+        section = f"Slide {slide.get('slide_number', '?')}: {title}"
+        if point_text:
+            section += f"\nExtracted slide content: {point_text}"
+        if script:
+            section += f"\nNarration: {script}"
+        if context_size + len(section) > 28000:
+            break
+        ctx_parts.append(section)
+        context_size += len(section)
+    context_str = "\n\n".join(ctx_parts)
 
     if language == "en-IN":
         lang_instr = "Answer in English."
@@ -400,11 +454,13 @@ async def async_answer_question(question: str, slides_context: list[dict], langu
         lang_instr = f"You MUST answer entirely in {lang_name} language only."
 
     prompt = (
-        f"You are an expert AI presenter who just finished a presentation. "
-        f"A listener has asked you a question. {lang_instr}\n\n"
+        f"You are the presenter answering questions about the uploaded slide deck. "
+        f"Answer only from the presentation context below. Do not invent facts or add outside claims. "
+        f"If the slides do not contain the answer, say that the presentation does not specify it. "
+        f"{lang_instr}\n\n"
         f"Presentation context:\n{context_str}\n\n"
         f"Listener's question: {question}\n\n"
-        f"Give a clear, helpful, 2-4 sentence answer as the presenter. "
+        f"Give a clear, helpful answer in 2-4 sentences as the presenter. "
         f"Output ONLY the spoken answer text in {lang_name}."
     )
 
@@ -437,7 +493,7 @@ async def async_answer_question(question: str, slides_context: list[dict], langu
         print(f"[Sarvam Q&A] Exception: {safe_str(e)}")
 
     if not answer_text:
-        answer_text = "That's a great question. Based on the presentation content, I'd be happy to elaborate — please ask again and I'll do my best to assist."
+        answer_text = "I couldn’t generate a deck-based answer just now. Please try your question again."
 
     # Generate TTS audio for the answer
     audio_uri = await async_generate_audio_sarvam_b64(answer_text, 0, session, language=language, speaker=voice_id)

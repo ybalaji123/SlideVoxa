@@ -32,6 +32,7 @@ let hasStarted = false;
 let presentationLanguage = 'en-IN'; // loaded from status endpoint
 let isQAOpen = false;               // true while Q&A panel is visible
 const slideDataCache = {}; // index -> { image_data_uri, audio_data_uri }
+let browserSpeechToken = 0;
 
 // Elements
 const slideTitle = document.getElementById('slide-title');
@@ -58,6 +59,7 @@ const completeOverlay = document.getElementById('complete-overlay');
 const qaList = document.getElementById('qa-list');
 const replayBtn = document.getElementById('replay-btn');
 const returnPresBtn = document.getElementById('return-pres-btn');
+const completeAskBtn = document.getElementById('complete-ask-btn');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 
 // Helper to dramatically improve performance by extracting massive base64 to memory Blobs
@@ -157,54 +159,116 @@ function buildThumbnails() {
         thumb.id = `thumb-${i}`;
         thumb.innerHTML = `
             <div class="thumb-number">${i + 1}</div>
+            <div class="thumb-preview">
+                <div class="thumb-preview-fallback">${escapeHtml(slide.title || `Slide ${i + 1}`)}</div>
+                <img class="thumb-image" alt="Slide ${i + 1}" loading="lazy" />
+            </div>
             <div class="thumb-title">${escapeHtml(slide.title || `Slide ${i + 1}`)}</div>
-            <div class="thumb-bars"><div class="thumb-bar"></div><div class="thumb-bar short"></div></div>
         `;
+        const thumbnailImage = thumb.querySelector('.thumb-image');
+        thumbnailImage.addEventListener('error', () => thumbnailImage.remove(), { once: true });
+        thumbnailImage.src = `${API_BASE}/api/presentations/${encodeURIComponent(presentationId)}/thumbnail/${i + 1}`;
         thumb.addEventListener('click', () => navigateTo(i));
         slidesThumbsEl.appendChild(thumb);
     });
 }
 
 function stopAudio() {
+    browserSpeechToken++;
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
     }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     narrationBar.style.display = 'none';
     if (narrationWaves) narrationWaves.style.display = 'none';
 }
 
-function playSlideAudioDirect(dataUri) {
+function finishNarration() {
+    narrationBar.style.display = 'none';
+    if (narrationWaves) narrationWaves.style.display = 'none';
+    if (currentSlide < slides.length - 1 && !isPaused) {
+        setTimeout(() => navigateTo(currentSlide + 1), 800);
+    } else if (currentSlide === slides.length - 1 && !isPaused) {
+        showCompletionOverlay();
+    }
+}
+
+function playBrowserSpeech(script, statusMessage) {
+    if (!script || !('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+        narrationBar.style.display = 'flex';
+        narrationText.textContent = 'Narration is unavailable on this device.';
+        if (narrationWaves) narrationWaves.style.display = 'none';
+        return;
+    }
+
+    stopAudio();
+    const token = browserSpeechToken;
+    const utterance = new SpeechSynthesisUtterance(script);
+    utterance.lang = presentationLanguage || 'en-IN';
+    utterance.volume = parseFloat(volumeSlider.value);
+
+    const availableVoices = window.speechSynthesis.getVoices();
+    const languagePrefix = utterance.lang.split('-')[0].toLowerCase();
+    utterance.voice = availableVoices.find(voice => voice.lang.toLowerCase() === utterance.lang.toLowerCase())
+        || availableVoices.find(voice => voice.lang.toLowerCase().startsWith(`${languagePrefix}-`))
+        || null;
+
+    let started = false;
+    currentAudio = {
+        pause: () => window.speechSynthesis.pause(),
+        play: () => {
+            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+            else if (!started) {
+                started = true;
+                window.speechSynthesis.speak(utterance);
+            }
+        },
+    };
+
+    narrationBar.style.display = 'flex';
+    narrationText.textContent = statusMessage || 'Using your device voice for narration.';
+    if (narrationWaves) narrationWaves.style.display = 'flex';
+
+    utterance.onend = () => {
+        if (token === browserSpeechToken) finishNarration();
+    };
+    utterance.onerror = event => {
+        if (token !== browserSpeechToken || event.error === 'canceled' || event.error === 'interrupted') return;
+        narrationText.textContent = 'Device voice could not speak this slide.';
+        if (narrationWaves) narrationWaves.style.display = 'none';
+    };
+
+    started = true;
+    window.speechSynthesis.speak(utterance);
+}
+
+function playSlideAudioDirect(dataUri, fallbackScript) {
     stopAudio();
     currentAudio = new Audio(dataUri);
     currentAudio.volume = parseFloat(volumeSlider.value);
+    let fallbackStarted = false;
+    const useFallbackVoice = () => {
+        if (fallbackStarted) return;
+        fallbackStarted = true;
+        playBrowserSpeech(fallbackScript, 'Generated audio could not play. Using your device voice.');
+    };
 
     narrationBar.style.display = 'flex';
     narrationText.textContent = 'AI Presenter Speaking...';
     if (narrationWaves) narrationWaves.style.display = 'flex';
 
-    currentAudio.addEventListener('ended', () => {
-        narrationBar.style.display = 'none';
-        if (narrationWaves) narrationWaves.style.display = 'none';
-        if (currentSlide < slides.length - 1 && !isPaused) {
-            setTimeout(() => navigateTo(currentSlide + 1), 800);
-        } else if (currentSlide === slides.length - 1) {
-            showCompletionOverlay();
-        }
-    });
+    currentAudio.addEventListener('ended', finishNarration);
 
-    currentAudio.addEventListener('error', (e) => {
-        console.error('Audio error:', e);
-        narrationBar.style.display = 'none';
-        if (currentSlide < slides.length - 1 && !isPaused) {
-            setTimeout(() => navigateTo(currentSlide + 1), 2000);
-        }
+    currentAudio.addEventListener('error', event => {
+        console.error('Audio error:', event);
+        useFallbackVoice();
     });
 
     if (!isPaused) {
         currentAudio.play().catch(err => {
             console.warn("Autoplay blocked:", err);
-            narrationText.textContent = 'Paused (Click Resume)';
+            useFallbackVoice();
         });
     }
 }
@@ -264,25 +328,11 @@ async function showSlide(index) {
     }
 
     // Auto-play audio if started
+    const narrationScript = slide.script || [slide.title, ...(slide.points || [])].filter(Boolean).join('. ');
     if (data.audio_data_uri && !isPaused && hasStarted) {
-        playSlideAudioDirect(data.audio_data_uri);
+        playSlideAudioDirect(data.audio_data_uri, narrationScript);
     } else if (!isPaused && hasStarted) {
-        // Fallback auto-advance if no audio is available
-        narrationBar.style.display = 'flex';
-        narrationText.textContent = 'Auto-advancing...';
-        if (narrationWaves) narrationWaves.style.display = 'none';
-        
-        currentAudio = { pause: () => clearTimeout(window.__autoAdvanceTimeout) };
-        window.__autoAdvanceTimeout = setTimeout(() => {
-            narrationBar.style.display = 'none';
-            if (currentAudio) currentAudio.pause();
-            currentAudio = null;
-            if (currentSlide < slides.length - 1 && !isPaused) {
-                navigateTo(currentSlide + 1);
-            } else if (currentSlide >= slides.length - 1 && !isPaused) {
-                showCompletionOverlay();
-            }
-        }, 5000);
+        playBrowserSpeech(narrationScript, 'No generated audio for this slide. Using your device voice.');
     }
 
     // 3. Low-priority look-ahead prefetch
@@ -359,6 +409,7 @@ document.addEventListener('fullscreenchange', () => {
 function showCompletionOverlay() {
     stopAudio();
     isComplete = true;
+    completeOverlay.style.display = 'none';
     qaList.innerHTML = '';
     if (questions.length > 0) {
         questions.forEach((q, i) => {
@@ -370,7 +421,10 @@ function showCompletionOverlay() {
     } else {
         qaList.innerHTML = '<p style="color:var(--text-muted);font-size:14px;">No questions generated.</p>';
     }
-    completeOverlay.style.display = 'flex';
+    clearTimeout(window.__completionQATimer);
+    window.__completionQATimer = setTimeout(() => {
+        if (isComplete && !isQAOpen) openQAPanel();
+    }, 1000);
 }
 
 replayBtn.addEventListener('click', () => {
@@ -388,6 +442,13 @@ if (returnPresBtn) {
         completeOverlay.style.display = 'none';
         // User stays on the last slide, but can navigate back. Use navigateTo to ensure correct state.
         navigateTo(slides.length - 1);
+    });
+}
+
+if (completeAskBtn) {
+    completeAskBtn.addEventListener('click', () => {
+        completeOverlay.style.display = 'none';
+        openQAPanel();
     });
 }
 
@@ -433,61 +494,87 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ═══════════════════════════════════════════════════
-// LIVE Q&A SYSTEM
-// ═══════════════════════════════════════════════════
-
-const askFloatBtn   = document.getElementById('ask-float-btn');
-const qaPanel       = document.getElementById('qa-panel');
-const qaCloseBtn    = document.getElementById('qa-close-btn');
-const qaInput       = document.getElementById('qa-question-input');
-const qaSubmitBtn   = document.getElementById('qa-submit-btn');
-const qaAnswerBubble = document.getElementById('qa-answer-bubble');
-const qaAnswerText  = document.getElementById('qa-answer-text');
+// LIVE Q&A CHAT
+const askFloatBtn = document.getElementById('ask-float-btn');
+const qaPanel = document.getElementById('qa-panel');
+const qaCloseBtn = document.getElementById('qa-close-btn');
+const qaInput = document.getElementById('qa-question-input');
+const qaSubmitBtn = document.getElementById('qa-submit-btn');
+const qaChatHistory = document.getElementById('qa-chat-history');
+const qaChatAudio = document.getElementById('qa-chat-audio');
 const qaAnswerWaves = document.getElementById('qa-answer-waves');
-const qaResumeBtn   = document.getElementById('qa-resume-btn');
+const qaVoiceBtn = document.getElementById('qa-voice-btn');
+const qaVoiceStatus = document.getElementById('qa-voice-status');
+const qaResumeBtn = document.getElementById('qa-resume-btn');
+const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+let qaAudio = null;
+let qaRecognition = null;
 
-let qaAudio = null; // Audio object for the Q&A answer TTS
+if (!SpeechRecognitionAPI && qaVoiceBtn) {
+    qaVoiceBtn.disabled = true;
+    qaVoiceBtn.title = 'Voice input is not supported in this browser';
+    qaVoiceBtn.setAttribute('aria-label', 'Voice input is not supported in this browser');
+}
+
+function appendQAMessage(role, message, extraClass = '') {
+    const item = document.createElement('div');
+    item.className = `qa-message qa-message-${role}${extraClass ? ` ${extraClass}` : ''}`;
+    item.textContent = message;
+    qaChatHistory.appendChild(item);
+    qaChatHistory.scrollTop = qaChatHistory.scrollHeight;
+    return item;
+}
 
 function openQAPanel() {
     if (isQAOpen || !hasStarted) return;
     isQAOpen = true;
 
-    // Pause the presentation
-    if (currentAudio) {
+    if (currentAudio && typeof currentAudio.pause === 'function') {
         currentAudio.pause();
         narrationText.textContent = 'Paused for Q&A';
-    } else {
-        // Pause auto-advance timer if active
-        if (window.__autoAdvanceTimeout) clearTimeout(window.__autoAdvanceTimeout);
     }
+    if (window.__autoAdvanceTimeout) clearTimeout(window.__autoAdvanceTimeout);
 
-    // Reset panel state
-    qaInput.value = '';
-    qaAnswerBubble.style.display = 'none';
+    if (isComplete && qaChatHistory.dataset.completionPromptShown !== 'true') {
+        appendQAMessage('assistant', "The presentation is complete. Do you have any questions? Type or say your question, and I'll answer using the uploaded slides.");
+        qaChatHistory.dataset.completionPromptShown = 'true';
+    } else if (!qaChatHistory.childElementCount) {
+        appendQAMessage(
+            'assistant',
+            "Ask me anything about the slides. I'll answer using the uploaded presentation."
+        );
+    }
     qaResumeBtn.style.display = 'none';
     qaSubmitBtn.disabled = false;
-    qaSubmitBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send`;
-
+    qaSubmitBtn.textContent = 'Send';
     qaPanel.style.display = 'flex';
     setTimeout(() => qaInput.focus(), 120);
 }
 
 function closeQAPanel() {
-    // Stop Q&A audio if playing
+    if (qaRecognition) {
+        try { qaRecognition.stop(); } catch (_) { }
+        qaRecognition = null;
+    }
     if (qaAudio) { qaAudio.pause(); qaAudio = null; }
-    if (qaAnswerWaves) qaAnswerWaves.style.display = 'none';
+    qaChatAudio.style.display = 'none';
     qaPanel.style.display = 'none';
     isQAOpen = false;
+    if (isComplete) completeOverlay.style.display = 'flex';
 }
 
 async function submitQuestion() {
     const question = qaInput.value.trim();
     if (!question) { qaInput.focus(); return; }
 
-    // Show loading state
+    appendQAMessage('user', question);
+    qaInput.value = '';
+    const answerMessage = appendQAMessage('assistant', 'Thinking...', 'qa-message-pending');
     qaSubmitBtn.disabled = true;
-    qaSubmitBtn.innerHTML = `<div style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle;"></div> Thinking...`;
-    qaAnswerBubble.style.display = 'none';
+    qaSubmitBtn.textContent = 'Thinking...';
+    qaVoiceBtn.disabled = true;
+    if (qaAudio) { qaAudio.pause(); qaAudio = null; }
+    qaChatAudio.style.display = 'none';
 
     try {
         const res = await fetch(`${API_BASE}/api/presentations/${presentationId}/ask`, {
@@ -495,50 +582,85 @@ async function submitQuestion() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ question, language: presentationLanguage }),
         });
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        answerMessage.classList.remove('qa-message-pending');
+        answerMessage.textContent = data.answer || 'Sorry, I could not generate an answer.';
+        qaResumeBtn.style.display = isComplete ? 'none' : 'inline-flex';
 
-        // Display answer text
-        qaAnswerText.textContent = data.answer || 'Sorry, I could not generate an answer.';
-        qaAnswerBubble.style.display = 'block';
-        qaResumeBtn.style.display = 'inline-flex';
-
-        // Play TTS audio if available
         if (data.audio_data_uri) {
-            if (qaAudio) { qaAudio.pause(); qaAudio = null; }
-            if (qaAnswerWaves) qaAnswerWaves.style.display = 'flex';
-
-            // Convert base64 to Blob for performance
             let audioSrc = data.audio_data_uri;
-            if (audioSrc.startsWith('data:')) {
-                audioSrc = dataURItoBlobUrl(audioSrc);
-            }
+            if (audioSrc.startsWith('data:')) audioSrc = dataURItoBlobUrl(audioSrc);
             qaAudio = new Audio(audioSrc);
             qaAudio.volume = parseFloat(volumeSlider.value);
-            qaAudio.play().catch(() => {});
-            qaAudio.addEventListener('ended', () => {
-                if (qaAnswerWaves) qaAnswerWaves.style.display = 'none';
-            });
+            qaChatAudio.style.display = 'flex';
+            qaAudio.addEventListener('ended', () => { qaChatAudio.style.display = 'none'; });
+            qaAudio.addEventListener('error', () => { qaChatAudio.style.display = 'none'; });
+            qaAudio.play().catch(() => { qaChatAudio.style.display = 'none'; });
         }
-
     } catch (err) {
-        qaAnswerText.textContent = `Failed to get answer: ${err.message}. Please try again.`;
-        qaAnswerBubble.style.display = 'block';
-        qaResumeBtn.style.display = 'inline-flex';
+        answerMessage.classList.remove('qa-message-pending');
+        answerMessage.textContent = `I couldn't get an answer just now (${err.message}). Please try again.`;
     } finally {
         qaSubmitBtn.disabled = false;
-        qaSubmitBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Ask Again`;
+        qaSubmitBtn.textContent = 'Send';
+        qaVoiceBtn.disabled = !SpeechRecognitionAPI;
+        qaInput.focus();
+    }
+}
+
+function startVoiceQuestion() {
+    if (!SpeechRecognitionAPI || !qaVoiceBtn) return;
+    if (qaRecognition) {
+        qaRecognition.stop();
+        return;
+    }
+
+    const recognition = new SpeechRecognitionAPI();
+    qaRecognition = recognition;
+    recognition.lang = presentationLanguage || 'en-IN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onstart = () => {
+        qaVoiceBtn.classList.add('is-listening');
+        qaVoiceStatus.textContent = 'Listening... speak your question.';
+        qaVoiceStatus.style.display = 'block';
+    };
+    recognition.onresult = event => {
+        const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+        if (transcript) {
+            qaInput.value = [qaInput.value.trim(), transcript].filter(Boolean).join(' ');
+            qaVoiceStatus.textContent = "Voice question captured. Select Send when you're ready.";
+            qaInput.focus();
+        }
+    };
+    recognition.onerror = event => {
+        qaVoiceStatus.textContent = event.error === 'not-allowed'
+            ? 'Allow microphone access to ask by voice.'
+            : 'Voice input stopped. You can type your question instead.';
+        qaVoiceStatus.style.display = 'block';
+    };
+    recognition.onend = () => {
+        qaVoiceBtn.classList.remove('is-listening');
+        qaRecognition = null;
+        setTimeout(() => {
+            if (!qaVoiceBtn.classList.contains('is-listening')) qaVoiceStatus.style.display = 'none';
+        }, 3500);
+    };
+    try {
+        recognition.start();
+    } catch (_) {
+        qaRecognition = null;
+        qaVoiceStatus.textContent = 'Voice input could not start. You can type your question instead.';
+        qaVoiceStatus.style.display = 'block';
     }
 }
 
 function resumeFromQA() {
-    // Stop Q&A audio
-    if (qaAudio) { qaAudio.pause(); qaAudio = null; }
-    if (qaAnswerWaves) qaAnswerWaves.style.display = 'none';
     closeQAPanel();
+    if (isComplete) return;
 
-    // Resume presentation audio from current slide timestamp
     if (currentAudio && typeof currentAudio.play === 'function' && !isPaused) {
         currentAudio.play().catch(() => {});
         narrationBar.style.display = 'flex';
@@ -549,15 +671,15 @@ function resumeFromQA() {
     }
 }
 
-// Wire up Q&A panel events
 if (askFloatBtn) askFloatBtn.addEventListener('click', openQAPanel);
-if (qaCloseBtn)  qaCloseBtn.addEventListener('click', () => { closeQAPanel(); });
+if (qaCloseBtn) qaCloseBtn.addEventListener('click', closeQAPanel);
 if (qaSubmitBtn) qaSubmitBtn.addEventListener('click', submitQuestion);
+if (qaVoiceBtn) qaVoiceBtn.addEventListener('click', startVoiceQuestion);
 if (qaResumeBtn) qaResumeBtn.addEventListener('click', resumeFromQA);
 if (qaInput) {
-    qaInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); submitQuestion(); }
-        if (e.key === 'Escape') closeQAPanel();
+    qaInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); submitQuestion(); }
+        if (event.key === 'Escape') closeQAPanel();
     });
 }
 

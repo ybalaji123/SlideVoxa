@@ -686,3 +686,33 @@
         display: none;
     }
 }
+
+/* BLACK + PINK LANDING CONTROLS */
+.ctrl-btn {
+  color: #111111;
+  border-color: #F48FB1;
+}
+.ctrl-btn:hover {
+  background: rgba(248, 187, 208, 0.28);
+  border-color: #F8BBD0;
+}
+.ctrl-play {
+  background: #111111;
+  border-color: #F8BBD0;
+  color: #F8BBD0;
+}
+.ctrl-play:hover {
+  background: #F8BBD0;
+  border-color: #F8BBD0;
+  color: #111111;
+}
+.cta-section .btn-primary {
+  background: #F8BBD0;
+  border-color: #F8BBD0;
+  color: #111111;
+}
+.cta-section .btn-primary:hover {
+  background: #F48FB1;
+  border-color: #F48FB1;
+  color: #111111;
+}

@@ -9,8 +9,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
         rel="stylesheet" />
-    <link rel="stylesheet" href="/static/css/global.css" />
-    <link rel="stylesheet" href="/static/css/dashboard.css" />
+    <link rel="stylesheet" href="/static/css/global.css?v=black-pink-1" />
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=sidebar-cards-1" />
     <link rel="icon" type="image/png" href="/static/images/favicon.png" />
 </head>
 
@@ -18,8 +18,15 @@
     <!-- SIDEBAR -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-logo">
-            <img class="brand-horizontal" src="/static/images/slidevoxa-horizontal.png" alt="SlideVoxa" style="display:block;width:150px;height:auto" />
+            <img class="brand-horizontal sidebar-logo-full" src="/static/images/slidevoxa-horizontal.png" alt="SlideVoxa" style="display:block;width:150px;height:auto" />
+            <img class="sidebar-logo-mark" src="/static/images/slidevoxa-mark.png" alt="" />
         </div>
+
+        <button class="sidebar-toggle" id="sidebar-toggle" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <polyline points="15 18 9 12 15 6" />
+            </svg>
+        </button>
 
         <nav class="sidebar-nav">
             <a href="/dashboard" class="nav-item active" id="nav-dashboard">
@@ -29,7 +36,7 @@
                     <rect x="3" y="14" width="7" height="7" />
                     <rect x="14" y="14" width="7" height="7" />
                 </svg>
-                Dashboard
+                <span>Dashboard</span>
             </a>
             <a href="/upload" class="nav-item" id="nav-upload">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -37,7 +44,7 @@
                     <polyline points="17 8 12 3 7 8" />
                     <line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
-                New Presentation
+                <span>New Presentation</span>
             </a>
         </nav>
 
@@ -139,7 +146,7 @@
 
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/dashboard.js?v=sidebar-cards-1"></script>
 </body>
 
 </html>

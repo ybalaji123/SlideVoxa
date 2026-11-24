@@ -138,4 +138,28 @@ function escapeHtml(str) {
 
 document.getElementById('refresh-btn').addEventListener('click', loadPresentations);
 
+// Sidebar collapse control
+const sidebarToggle = document.getElementById('sidebar-toggle');
+if (sidebarToggle) {
+    const sidebarPreferenceKey = 'sv_sidebar_collapsed';
+    const savedSidebarState = localStorage.getItem(sidebarPreferenceKey);
+    const initiallyCollapsed = savedSidebarState === null
+        ? window.innerWidth <= 768
+        : savedSidebarState === 'true';
+
+    function setSidebarCollapsed(collapsed) {
+        document.body.classList.toggle('sidebar-collapsed', collapsed);
+        sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+        sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+        sidebarToggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    }
+
+    setSidebarCollapsed(initiallyCollapsed);
+    sidebarToggle.addEventListener('click', () => {
+        const collapsed = !document.body.classList.contains('sidebar-collapsed');
+        setSidebarCollapsed(collapsed);
+        localStorage.setItem(sidebarPreferenceKey, String(collapsed));
+    });
+}
+
 loadPresentations();

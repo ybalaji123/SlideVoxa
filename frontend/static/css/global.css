@@ -449,3 +449,87 @@ a {
 .toast-info {
   border-left: 3px solid #111111;
 }
+
+/* BLACK + PINK BUTTON THEME */
+.btn-primary,
+.btn-danger {
+  background: #111111;
+  color: #F8BBD0;
+  border: 1.5px solid #F8BBD0;
+}
+.btn-primary:hover,
+.btn-danger:hover {
+  background: #F8BBD0;
+  color: #111111;
+  border-color: #F8BBD0;
+}
+.btn-primary:active,
+.btn-danger:active {
+  background: #F48FB1;
+  color: #111111;
+  border-color: #F48FB1;
+}
+.btn-outline {
+  color: #111111;
+  border-color: #F48FB1;
+}
+.btn-outline:hover {
+  color: #111111;
+  border-color: #F8BBD0;
+  background: #F8BBD0;
+}
+.btn-ghost {
+  color: #111111;
+  border-color: rgba(244, 143, 177, 0.65);
+  background: rgba(248, 187, 208, 0.14);
+}
+.btn-ghost:hover {
+  color: #111111;
+  border-color: #F8BBD0;
+  background: rgba(248, 187, 208, 0.38);
+}
+.btn:focus-visible,
+button:focus-visible,
+a.back-home:focus-visible {
+  outline: 3px solid #F8BBD0;
+  outline-offset: 2px;
+}
+
+/* BLACK + PINK PRESENTATION CONTROLS */
+.present-page .ctrl-btn-icon {
+  background: rgba(248, 187, 208, 0.14);
+  border-color: #F48FB1;
+  color: #111111;
+}
+.present-page .ctrl-btn-icon:hover:not(:disabled) {
+  background: #F8BBD0;
+  border-color: #F8BBD0;
+  color: #111111;
+}
+.present-page .ctrl-next {
+  background: #111111;
+  border-color: #F8BBD0;
+  color: #F8BBD0;
+}
+.present-page .ctrl-next:hover {
+  background: #F8BBD0;
+  border-color: #F8BBD0;
+  color: #111111;
+}
+.present-page .ask-float-btn {
+  background: #111111;
+  color: #F8BBD0;
+  border: 1.5px solid #F8BBD0;
+  box-shadow: 0 4px 20px rgba(244, 143, 177, 0.28);
+  animation: askPulsePink 2.5s ease-in-out infinite;
+}
+.present-page .ask-float-btn:hover {
+  background: #F8BBD0;
+  color: #111111;
+  box-shadow: 0 6px 28px rgba(244, 143, 177, 0.42);
+  animation: none;
+}
+@keyframes askPulsePink {
+  0%, 100% { box-shadow: 0 4px 20px rgba(244, 143, 177, 0.28); }
+  50% { box-shadow: 0 4px 30px rgba(244, 143, 177, 0.48), 0 0 0 8px rgba(248, 187, 208, 0.16); }
+}
